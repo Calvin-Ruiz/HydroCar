@@ -26,9 +26,9 @@ class HYDROCAR_API IInteractive
 public:
 	UFUNCTION(BlueprintNativeEvent, Category = Interactive)
 	void OnNear(AHydroCarPawn* player);
-	virtual void OnNear_Implementation(AHydroCarPawn* player);
+	virtual void OnNear_Implementation(AHydroCarPawn* player) = 0;
 
 	UFUNCTION(BlueprintNativeEvent, Category = Interactive)
 	void OnFar(AHydroCarPawn* player);
-	virtual void OnFar_Implementation(AHydroCarPawn* player);
+	virtual void OnFar_Implementation(AHydroCarPawn* player) = 0;
 };
