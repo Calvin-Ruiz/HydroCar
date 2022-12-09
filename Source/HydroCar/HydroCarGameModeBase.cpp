@@ -3,3 +3,8 @@
 
 #include "HydroCarGameModeBase.h"
 
+
+void AHydroCarGameModeBase::StartPlay()
+{
+	save = BigSave::loadShared("GameSave");
+}
