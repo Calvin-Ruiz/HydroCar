@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "WheeledVehiclePawn.h"
-#include "Tools/SaveData.hpp"
+#include "Tools/BigSave.hpp"
 #include "HydroCarPawn.generated.h"
 
 /**
@@ -47,12 +47,24 @@ public:
 	// UPROPERTY(Category = Race, EditAnywhere, BlueprintReadOnly)
 	// int maxCurrentLap = 3;
 
-	// EndGame + Timer
+	void saveCheckpoint();
+	void loadCheckpoint();
 	void endGame();
-	void startTimer();
 
 	UPROPERTY(Category = Timer, EditDefaultsOnly, BlueprintReadOnly)
 	int seconds;
+
+	// Number of unique checkpoint in a Lap
+	UPROPERTY(Category = Game, EditDefaultsOnly, BlueprintReadOnly)
+	int checkPointCount = 1;
+	// Number of lap required
+	UPROPERTY(Category = Game, EditDefaultsOnly, BlueprintReadOnly)
+	int targetLapCount = 3;
+
+	UPROPERTY(Category = Game, EditDefaultsOnly, BlueprintReadOnly)
+	int nextCheckPoint = checkPointCount - 1;
+	UPROPERTY(Category = Game, EditDefaultsOnly, BlueprintReadOnly)
+	int currentLap = 0;
 
 	// Tire variables
 	UPROPERTY(Category = Tire, EditDefaultsOnly, BlueprintReadOnly)
@@ -109,6 +121,9 @@ public:
 	// Air Physics
 	//void UpdateInAirControl(float DeltaTime);
 
+	// Return true if it was the expected checkpoint
+	bool reachCheckpoint(int checkPointNumber);
+
 protected:
 
 	// Spring arm for the camera
@@ -118,12 +133,6 @@ protected:
 	// Camera
 	UPROPERTY(Category = Camera, EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* Camera;
-
-	UFUNCTION(Category = Blueprint, BlueprintImplementableEvent)
-	void showOverlay();
-
-	UFUNCTION(Category = Blueprint, BlueprintImplementableEvent)
-	void hideOverlay();
 
 protected:
 	// Save every information about the player
@@ -139,4 +148,7 @@ protected:
 private:
 	void setDirection(int32 direction);
 	int32 cachedDirection = 0;
+
+	std::shared_ptr<BigSave> save = BigSave::loadShared("saved");
+	SaveData &saved = *save;
 };

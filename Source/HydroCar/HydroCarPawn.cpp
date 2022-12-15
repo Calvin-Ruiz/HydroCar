@@ -55,7 +55,6 @@ AHydroCarPawn::AHydroCarPawn()
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	Camera->FieldOfView = 90.0f;
-
 }
 
 void AHydroCarPawn::Tick(float deltaTime)
@@ -76,6 +75,7 @@ void AHydroCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 	PlayerInputComponent->BindAction("Handbrake", IE_Pressed, this, &AHydroCarPawn::OnHandbrakePressed);
 	PlayerInputComponent->BindAction("Handbrake", IE_Released, this, &AHydroCarPawn::OnHandbrakeReleased);
+	PlayerInputComponent->BindAction("Respawn", IE_Released, this, &AHydroCarPawn::loadCheckpoint);
 }
 
 void AHydroCarPawn::setDirection(int32 direction)
@@ -138,3 +138,49 @@ void AHydroCarPawn::NotifyActorEndOverlap(AActor* other)
 		ptr->Execute_OnFar(other, this);
 	}
 }
+
+bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)
+{
+	if (checkPointNumber == nextCheckPoint) {
+		if (++nextCheckPoint == checkPointCount) {
+			nextCheckPoint = 0;
+			if (++currentLap == targetLapCount) {
+				currentLap = 0;
+				endGame();
+				return true;
+			}
+		}
+		saveCheckpoint();
+		return true;
+	}
+	return false;
+}
+
+void AHydroCarPawn::endGame()
+{
+	// Not Implemented Yet
+}
+
+void AHydroCarPawn::saveCheckpoint()
+{
+	SaveData sd(seconds);
+	sd["nextCheckPoint"] = nextCheckPoint;
+	sd["currentLap"] = currentLap;
+	sd["pos"] = GetActorLocation();
+	sd["rot"] = GetActorRotation();
+	GetVehicleMovementComponent()->GetBaseSnapshot(sd["mov"]);
+	saved.push(sd);
+}
+
+void AHydroCarPawn::loadCheckpoint()
+{
+	auto &sd = saved.getList().back();
+	seconds = sd;
+	nextCheckPoint = sd["nextCheckPoint"];
+	currentLap = sd["currentLap"];
+	TeleportTo(sd["pos"], sd["rot"], false, false);
+	GetVehicleMovementComponent()->SetBaseSnapshot(sd["mov"]);
+}
+
+// FTimerHandle UnusedHandle;
+// GetWorldTimerManager().SetTimer(UnusedHandle, this, &AVehiclePawn::startTimer, 1, true);
