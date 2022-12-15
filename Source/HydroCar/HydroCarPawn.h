@@ -20,17 +20,17 @@ public:
 	virtual void NotifyActorBeginOverlap(AActor *other) override;
 	virtual void NotifyActorEndOverlap(AActor* other) override;
 
-	virtual void Tick(float DeltaTime) override; // Function that is called every frame
+	virtual void Tick(float deltaTime) override; // Function that is called every frame
 
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
 	// Throttle + Steering
-	void ApplyThrottle(float Val); // Val = how much force we want to apply
-	void ApplySteering(float Val);
+	void ApplyThrottle(float val); // val = how much force we want to apply
+	void ApplySteering(float val);
 
 	// Camera mouse input
-	void Lookup(float Val);
-	void Turn(float Val);
+	void Lookup(float val);
+	void Turn(float val);
 
 	// Handbrake
 	void OnHandbrakePressed();
@@ -82,6 +82,8 @@ public:
 
 	// Steering variables
 	UPROPERTY(Category = Sterring, EditDefaultsOnly, BlueprintReadOnly)
+	float AngleRatio = 1.0f;
+	UPROPERTY(Category = Sterring, EditDefaultsOnly, BlueprintReadOnly)
 	float FirstSteeringMin = 0.0f;
 	UPROPERTY(Category = Sterring, EditDefaultsOnly, BlueprintReadOnly)
 	float FirstSteeringMax = 1.0f;
@@ -98,6 +100,8 @@ public:
 	UPROPERTY(Category = Gearbox, EditDefaultsOnly, BlueprintReadOnly)
 	bool GearAutoBox = true;
 	UPROPERTY(Category = Gearbox, EditDefaultsOnly, BlueprintReadOnly)
+	bool AutoReverse = true;
+	UPROPERTY(Category = Gearbox, EditDefaultsOnly, BlueprintReadOnly)
 	float GearSwitchTime = 0.15f;
 	UPROPERTY(Category = Gearbox, EditDefaultsOnly, BlueprintReadOnly)
 	float GearAutoBoxLatency = 1.0f;
@@ -109,11 +113,17 @@ protected:
 
 	// Spring arm for the camera
 	UPROPERTY(Category = Camera, EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-		class USpringArmComponent* SpringArm;
+	class USpringArmComponent* SpringArm;
 
 	// Camera
 	UPROPERTY(Category = Camera, EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-		class UCameraComponent* Camera;
+	class UCameraComponent* Camera;
+
+	UFUNCTION(Category = Blueprint, BlueprintImplementableEvent)
+	void showOverlay();
+
+	UFUNCTION(Category = Blueprint, BlueprintImplementableEvent)
+	void hideOverlay();
 
 protected:
 	// Save every information about the player
@@ -126,4 +136,7 @@ protected:
 
 	UPROPERTY()
 	FString playerName;
+private:
+	void setDirection(int32 direction);
+	int32 cachedDirection = 0;
 };

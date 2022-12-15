@@ -28,16 +28,19 @@ AHydroCarPawn::AHydroCarPawn()
 	Vehicle4W->EngineSetup.TorqueCurve.GetRichCurve()->AddKey(ThirdTorqueMin, ThirdTorqueMax);
 
 	// Adjust the steering
+	Vehicle4W->SteeringSetup.AngleRatio = AngleRatio;
 	Vehicle4W->SteeringSetup.SteeringCurve.GetRichCurve()->Reset();
 	Vehicle4W->SteeringSetup.SteeringCurve.GetRichCurve()->AddKey(FirstSteeringMin, FirstSteeringMax);
 	Vehicle4W->SteeringSetup.SteeringCurve.GetRichCurve()->AddKey(SecondSteeringMin, SecondSteeringMax);
 	Vehicle4W->SteeringSetup.SteeringCurve.GetRichCurve()->AddKey(ThirdSteeringMin, ThirdSteeringMax);
+	Vehicle4W->SteeringSetup.SteeringType = ESteeringType::Ackermann;
 
 	Vehicle4W->DifferentialSetup.DifferentialType = EVehicleDifferential::AllWheelDrive;
 	Vehicle4W->DifferentialSetup.FrontRearSplit = 0.65f;
 
 	// Automatic gearbox
 	Vehicle4W->TransmissionSetup.bUseAutomaticGears = GearAutoBox;
+	Vehicle4W->TransmissionSetup.bUseAutoReverse = AutoReverse;
 	Vehicle4W->TransmissionSetup.GearChangeTime = GearSwitchTime;
 	Vehicle4W->TransmissionSetup.ChangeDownRPM = GearAutoBoxLatency;
 	Vehicle4W->TransmissionSetup.ChangeUpRPM = GearAutoBoxLatency;
@@ -55,9 +58,9 @@ AHydroCarPawn::AHydroCarPawn()
 
 }
 
-void AHydroCarPawn::Tick(float DeltaTime)
+void AHydroCarPawn::Tick(float deltaTime)
 {
-	Super::Tick(DeltaTime);
+	Super::Tick(deltaTime);
 
 	//UpdateInAirControl(DeltaTime);
 }
@@ -75,29 +78,40 @@ void AHydroCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("Handbrake", IE_Released, this, &AHydroCarPawn::OnHandbrakeReleased);
 }
 
-void AHydroCarPawn::ApplyThrottle(float Val)
+void AHydroCarPawn::setDirection(int32 direction)
 {
-	GetVehicleMovementComponent()->SetThrottleInput(Val);
-}
-
-void AHydroCarPawn::ApplySteering(float Val)
-{
-	GetVehicleMovementComponent()->SetSteeringInput(Val);
-}
-
-void AHydroCarPawn::Lookup(float Val)
-{
-	if (Val != 0.f)
-	{
-		AddControllerPitchInput(Val);
+	if (direction != cachedDirection) {
+		cachedDirection = direction;
+		GetVehicleMovementComponent()->SetTargetGear(direction, true);
 	}
 }
 
-void AHydroCarPawn::Turn(float Val)
+void AHydroCarPawn::ApplyThrottle(float val)
 {
-	if (Val != 0.f)
-	{
-		AddControllerYawInput(Val);
+	if (val < 0) {
+		val = -val;
+		setDirection(-1);
+	} else
+		setDirection(1);
+	GetVehicleMovementComponent()->SetThrottleInput(val);
+}
+
+void AHydroCarPawn::ApplySteering(float val)
+{
+	GetVehicleMovementComponent()->SetSteeringInput(val);
+}
+
+void AHydroCarPawn::Lookup(float val)
+{
+	if (val != 0.f) {
+		AddControllerPitchInput(val);
+	}
+}
+
+void AHydroCarPawn::Turn(float val)
+{
+	if (val != 0.f) {
+		AddControllerYawInput(val);
 	}
 }
 
@@ -120,7 +134,7 @@ void AHydroCarPawn::NotifyActorBeginOverlap(AActor* other)
 
 void AHydroCarPawn::NotifyActorEndOverlap(AActor* other)
 {
-	if (auto* ptr = Cast<IInteractive>(other)) {
+	if (auto *ptr = Cast<IInteractive>(other)) {
 		ptr->Execute_OnFar(other, this);
 	}
 }
