@@ -3,6 +3,7 @@
 
 #include "HydroCarPawn.h"
 #include "Interactive.h"
+#include "HydroCarGameModeBase.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
@@ -164,10 +165,26 @@ bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)
 			startTime = std::chrono::steady_clock::now();
 			started = true;
 		}
+		prevCheckPoint = (checkPointNumber + checkPointCount - 1) % checkPointCount;
 		if (++nextCheckPoint == checkPointCount) {
 			nextCheckPoint = 0;
-			if (++currentLap == targetLapCount) {
-				currentLap = 0;
+			if (currentLap++ == targetLapCount) {
+				endGame();
+				return true;
+			}
+		}
+		saveCheckpoint();
+		return true;
+	} else if (checkPointNumber == prevCheckPoint) {
+		if (!started) {
+			currentLap = -1;
+			startTime = std::chrono::steady_clock::now();
+			started = true;
+		}
+		nextCheckPoint = (checkPointNumber + 1) % checkPointCount;
+		if (--prevCheckPoint < 0) {
+			prevCheckPoint += checkPointCount;
+			if (currentLap-- == -targetLapCount) {
 				endGame();
 				return true;
 			}
@@ -178,17 +195,33 @@ bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)
 	return false;
 }
 
+void AHydroCarPawn::onBegin()
+{
+	currentLap = 1;
+	nextCheckPoint = 0;
+	prevCheckPoint = checkPointCount - 1;
+	if (saved[S_CHECKPOINTS].size()) {
+		loadCheckpoint();
+		started = true;
+	}
+}
+
 void AHydroCarPawn::endGame()
 {
 	// Work In Progress
+	auto duration = std::chrono::steady_clock::now() - startTime;
+	if (saved[S_CHECKPOINTS].get<std::chrono::steady_clock::duration>(duration) > duration)
+		saved[S_CHECKPOINTS] = duration;
+	saved[S_CHECKPOINTS].truncate();
 	started = false;
+	AHydroCarGameModeBase::instance->respawn(this);
 	OnEndGame();
 }
 
 void AHydroCarPawn::dropCheckpoint()
 {
-	if (saved.size() > 1)
-		saved.getList().pop_back();
+	if (saved[S_CHECKPOINTS].size() > 1)
+		saved[S_CHECKPOINTS].getList().pop_back();
 }
 
 void AHydroCarPawn::saveCheckpoint()
@@ -199,12 +232,12 @@ void AHydroCarPawn::saveCheckpoint()
 	sd["pos"] = GetActorLocation();
 	sd["rot"] = GetActorRotation();
 	GetVehicleMovementComponent()->GetBaseSnapshot(sd["mov"]);
-	saved.push(sd);
+	saved[S_CHECKPOINTS].push(sd);
 }
 
 void AHydroCarPawn::loadCheckpoint()
 {
-	auto &sd = saved.getList().back();
+	auto &sd = saved[S_CHECKPOINTS].getList().back();
 	startTime = std::chrono::steady_clock::now() - sd.get<std::chrono::steady_clock::duration>();
 	nextCheckPoint = sd["nextCheckPoint"];
 	currentLap = sd["currentLap"];

@@ -8,6 +8,13 @@
 #include <chrono>
 #include "HydroCarPawn.generated.h"
 
+// Enumerate all sections at the root of a player save
+enum Section {
+	S_CHECKPOINTS,
+	S_ACHIEVEMENTS,
+	// Only add new sections at the end of this enum, right above this comment, to maintain save compatibility
+};
+
 /**
  *
  */
@@ -53,6 +60,9 @@ public:
 	void loadCheckpoint();
 	void endGame();
 
+	UFUNCTION(BlueprintCallable)
+	void onBegin();
+
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnEndGame();
 
@@ -66,8 +76,8 @@ public:
 	UPROPERTY(Category = Game, EditDefaultsOnly, BlueprintReadOnly)
 	int targetLapCount = 3;
 
-	UPROPERTY(Category = Game, EditDefaultsOnly, BlueprintReadOnly)
-	int nextCheckPoint = checkPointCount - 1;
+	int prevCheckPoint;
+	int nextCheckPoint;
 	UPROPERTY(Category = Game, EditDefaultsOnly, BlueprintReadOnly)
 	int currentLap = 0;
 
@@ -154,7 +164,7 @@ private:
 	void setDirection(int32 direction);
 	int32 cachedDirection = 0;
 
-	std::shared_ptr<BigSave> save = BigSave::loadShared("saved");
+	std::shared_ptr<BigSave> save = BigSave::loadShared("PlayerSave");
 	SaveData &saved = *save;
 	std::chrono::steady_clock::time_point startTime;
 	bool started = false;
