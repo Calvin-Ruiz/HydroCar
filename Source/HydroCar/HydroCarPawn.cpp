@@ -61,6 +61,22 @@ void AHydroCarPawn::Tick(float deltaTime)
 {
 	Super::Tick(deltaTime);
 
+	if (started) {
+		int milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime).count();
+		timer[15] = '0' + milliseconds % 10;
+		milliseconds /= 10;
+		timer[14] = '0' + milliseconds % 10;
+		milliseconds /= 10;
+		timer[13] = '0' + milliseconds % 10;
+		milliseconds /= 10;
+		timer[11] = '0' + milliseconds % 10;
+		milliseconds /= 10;
+		timer[10] = '0' + milliseconds % 6;
+		milliseconds /= 6;
+		timer[8] = '0' + milliseconds % 10;
+		milliseconds /= 10;
+		timer[7] = '0' + milliseconds % 10;
+	}
 	//UpdateInAirControl(DeltaTime);
 }
 
@@ -76,6 +92,8 @@ void AHydroCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("Handbrake", IE_Pressed, this, &AHydroCarPawn::OnHandbrakePressed);
 	PlayerInputComponent->BindAction("Handbrake", IE_Released, this, &AHydroCarPawn::OnHandbrakeReleased);
 	PlayerInputComponent->BindAction("Respawn", IE_Released, this, &AHydroCarPawn::loadCheckpoint);
+	PlayerInputComponent->BindAction("DropCheckpoint", IE_Pressed, this, &AHydroCarPawn::dropCheckpoint);
+	PlayerInputComponent->BindAction("DropCheckpoint", IE_Released, this, &AHydroCarPawn::loadCheckpoint);
 }
 
 void AHydroCarPawn::setDirection(int32 direction)
@@ -142,6 +160,10 @@ void AHydroCarPawn::NotifyActorEndOverlap(AActor* other)
 bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)
 {
 	if (checkPointNumber == nextCheckPoint) {
+		if (!started) {
+			startTime = std::chrono::steady_clock::now();
+			started = true;
+		}
 		if (++nextCheckPoint == checkPointCount) {
 			nextCheckPoint = 0;
 			if (++currentLap == targetLapCount) {
@@ -158,12 +180,20 @@ bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)
 
 void AHydroCarPawn::endGame()
 {
-	// Not Implemented Yet
+	// Work In Progress
+	started = false;
+	OnEndGame();
+}
+
+void AHydroCarPawn::dropCheckpoint()
+{
+	if (saved.size() > 1)
+		saved.getList().pop_back();
 }
 
 void AHydroCarPawn::saveCheckpoint()
 {
-	SaveData sd(seconds);
+	SaveData sd(std::chrono::steady_clock::now() - startTime);
 	sd["nextCheckPoint"] = nextCheckPoint;
 	sd["currentLap"] = currentLap;
 	sd["pos"] = GetActorLocation();
@@ -175,12 +205,9 @@ void AHydroCarPawn::saveCheckpoint()
 void AHydroCarPawn::loadCheckpoint()
 {
 	auto &sd = saved.getList().back();
-	seconds = sd;
+	startTime = std::chrono::steady_clock::now() - sd.get<std::chrono::steady_clock::duration>();
 	nextCheckPoint = sd["nextCheckPoint"];
 	currentLap = sd["currentLap"];
 	TeleportTo(sd["pos"], sd["rot"], false, false);
 	GetVehicleMovementComponent()->SetBaseSnapshot(sd["mov"]);
 }
-
-// FTimerHandle UnusedHandle;
-// GetWorldTimerManager().SetTimer(UnusedHandle, this, &AVehiclePawn::startTimer, 1, true);

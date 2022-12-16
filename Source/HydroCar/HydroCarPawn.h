@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "WheeledVehiclePawn.h"
 #include "Tools/BigSave.hpp"
+#include <chrono>
 #include "HydroCarPawn.generated.h"
 
 /**
@@ -47,12 +48,16 @@ public:
 	// UPROPERTY(Category = Race, EditAnywhere, BlueprintReadOnly)
 	// int maxCurrentLap = 3;
 
+	void dropCheckpoint();
 	void saveCheckpoint();
 	void loadCheckpoint();
 	void endGame();
 
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnEndGame();
+
 	UPROPERTY(Category = Timer, EditDefaultsOnly, BlueprintReadOnly)
-	int seconds;
+	FString timer = "Timer: 00:00.000";
 
 	// Number of unique checkpoint in a Lap
 	UPROPERTY(Category = Game, EditDefaultsOnly, BlueprintReadOnly)
@@ -151,4 +156,6 @@ private:
 
 	std::shared_ptr<BigSave> save = BigSave::loadShared("saved");
 	SaveData &saved = *save;
+	std::chrono::steady_clock::time_point startTime;
+	bool started = false;
 };
