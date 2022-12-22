@@ -5,13 +5,16 @@
 #include "CoreMinimal.h"
 #include "WheeledVehiclePawn.h"
 #include "Tools/BigSave.hpp"
+#include "UETools/FSaveData.h"
 #include <chrono>
 #include "HydroCarPawn.generated.h"
 
 // Enumerate all sections at the root of a player save
+UENUM()
 enum Section {
 	S_CHECKPOINTS,
 	S_ACHIEVEMENTS,
+	S_STATISTICS,
 	// Only add new sections at the end of this enum, right above this comment, to maintain save compatibility
 };
 
@@ -66,8 +69,17 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnEndGame();
 
-	UPROPERTY(Category = Timer, EditDefaultsOnly, BlueprintReadOnly)
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnSaveCheckpoint(FSaveData datas);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnLoadCheckpoint(FSaveData datas);
+
+	UPROPERTY(Category = Timer, VisibleInstanceOnly, BlueprintReadOnly)
 	FString timer = "Timer: 00:00.000";
+
+	UPROPERTY(Category = Timer, VisibleInstanceOnly, BlueprintReadOnly)
+	FString bestTime = "Best: 00:00.000";
 
 	// Number of unique checkpoint in a Lap
 	UPROPERTY(Category = Game, EditDefaultsOnly, BlueprintReadOnly)
@@ -149,7 +161,6 @@ protected:
 	UPROPERTY(Category = Camera, EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* Camera;
 
-protected:
 	// Save every information about the player
 	// UFUNCTION()
 	// SaveData SaveCurrentState();
@@ -168,4 +179,8 @@ private:
 	SaveData &saved = *save;
 	std::chrono::steady_clock::time_point startTime;
 	bool started = false;
+
+protected:
+	UPROPERTY(AdvancedDisplay, NoClear, EditInstanceOnly, BlueprintReadOnly)
+	FSaveData Saved = {&saved};
 };

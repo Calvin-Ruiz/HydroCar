@@ -200,8 +200,25 @@ void AHydroCarPawn::onBegin()
 	currentLap = 1;
 	nextCheckPoint = 0;
 	prevCheckPoint = checkPointCount - 1;
+	if (saved[S_CHECKPOINTS].empty())
+		return;
+	int milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(saved[S_CHECKPOINTS].get<std::chrono::steady_clock::duration>()).count();
+	bestTime[14] = '0' + milliseconds % 10;
+	milliseconds /= 10;
+	bestTime[13] = '0' + milliseconds % 10;
+	milliseconds /= 10;
+	bestTime[12] = '0' + milliseconds % 10;
+	milliseconds /= 10;
+	bestTime[10] = '0' + milliseconds % 10;
+	milliseconds /= 10;
+	bestTime[9] = '0' + milliseconds % 6;
+	milliseconds /= 6;
+	bestTime[7] = '0' + milliseconds % 10;
+	milliseconds /= 10;
+	bestTime[6] = '0' + milliseconds % 10;
 	if (saved[S_CHECKPOINTS].size()) {
 		loadCheckpoint();
+		--saved[S_STATISTICS]["checkpoint"]["loaded"].get<int>();
 		started = true;
 	}
 }
@@ -216,12 +233,15 @@ void AHydroCarPawn::endGame()
 	started = false;
 	AHydroCarGameModeBase::instance->respawn(this);
 	OnEndGame();
+	saved[S_STATISTICS]["races"].get<int>()++;
+	saved[S_STATISTICS]["time"]["raced"].get<std::chrono::steady_clock::duration>() += duration;
 }
 
 void AHydroCarPawn::dropCheckpoint()
 {
 	if (saved[S_CHECKPOINTS].size() > 1)
 		saved[S_CHECKPOINTS].getList().pop_back();
+	saved[S_STATISTICS]["checkpoint"]["dropped"].get<std::chrono::steady_clock::duration>()++;
 }
 
 void AHydroCarPawn::saveCheckpoint()
@@ -232,15 +252,23 @@ void AHydroCarPawn::saveCheckpoint()
 	sd["pos"] = GetActorLocation();
 	sd["rot"] = GetActorRotation();
 	GetVehicleMovementComponent()->GetBaseSnapshot(sd["mov"]);
+	OnSaveCheckpoint({&sd});
 	saved[S_CHECKPOINTS].push(sd);
+	++saved[S_STATISTICS]["checkpoint"]["saved"].get<int>();
 }
 
 void AHydroCarPawn::loadCheckpoint()
 {
+	if (!saved[S_CHECKPOINTS].size())
+		return;
 	auto &sd = saved[S_CHECKPOINTS].getList().back();
-	startTime = std::chrono::steady_clock::now() - sd.get<std::chrono::steady_clock::duration>();
+	auto newStartTime = std::chrono::steady_clock::now() - sd.get<std::chrono::steady_clock::duration>();
+	saved[S_STATISTICS]["time"]["dropped"].get<std::chrono::steady_clock::duration>() += newStartTime - startTime;
+	startTime = newStartTime;
 	nextCheckPoint = sd["nextCheckPoint"];
 	currentLap = sd["currentLap"];
 	TeleportTo(sd["pos"], sd["rot"], false, false);
 	GetVehicleMovementComponent()->SetBaseSnapshot(sd["mov"]);
+	OnLoadCheckpoint({&sd});
+	saved[S_STATISTICS]["checkpoint"]["loaded"].get<int>()++;
 }
