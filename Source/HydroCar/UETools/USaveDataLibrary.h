@@ -122,6 +122,11 @@ public:
     static int64 AsLong(FSaveData wrapper, MT type) {
         return (type == MT::UINT) ? self.get<uint32_t>() : self.get<int64>();
     }
+    // Get boolean as MT::CHAR type
+    UFUNCTION(Category = SaveData, BlueprintPure)
+    static bool AsBool(FSaveData wrapper) {
+        return self.get<bool>();
+    }
     // Get value as ellapsed time in milliseconds
     UFUNCTION(Category = SaveData, BlueprintPure)
     static int64 AsDuration(FSaveData wrapper) {
@@ -186,6 +191,11 @@ public:
             self.get<uint32_t>() = value;
         else
             self.get<int64_t>() = value;
+    }
+    // Store boolean as type MT::CHAR
+    UFUNCTION(Category = SaveData, BlueprintCallable)
+    static void SetBool(FSaveData wrapper, bool value) {
+        self.get<bool>() = value;
     }
     UFUNCTION(Category = SaveData, BlueprintCallable)
     static FSaveDataRoot Create() {

@@ -10,6 +10,7 @@
 #include "Components/InputComponent.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Tools/BigSave.hpp"
+#include "BaseWidget.h"
 
 AHydroCarPawn::AHydroCarPawn()
 {
@@ -95,6 +96,7 @@ void AHydroCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("Respawn", IE_Released, this, &AHydroCarPawn::loadCheckpoint);
 	PlayerInputComponent->BindAction("DropCheckpoint", IE_Pressed, this, &AHydroCarPawn::dropCheckpoint);
 	PlayerInputComponent->BindAction("DropCheckpoint", IE_Released, this, &AHydroCarPawn::loadCheckpoint);
+	PlayerInputComponent->BindAction("Back", IE_Released, this, &AHydroCarPawn::OnBack);
 }
 
 void AHydroCarPawn::setDirection(int32 direction)
@@ -102,6 +104,8 @@ void AHydroCarPawn::setDirection(int32 direction)
 	if (direction != cachedDirection) {
 		cachedDirection = direction;
 		GetVehicleMovementComponent()->SetTargetGear(direction, true);
+		if (direction < 0)
+			updateAchievement(AchievementName::BACKWARD);
 	}
 }
 
@@ -158,13 +162,20 @@ void AHydroCarPawn::NotifyActorEndOverlap(AActor* other)
 	}
 }
 
+void AHydroCarPawn::OnBack()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Invoke Pause Menu"));
+	display->Open(pauseMenu);
+}
+
 bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)
 {
 	if (checkPointNumber == nextCheckPoint) {
 		if (!started) {
 			startTime = std::chrono::steady_clock::now();
 			started = true;
-		}
+		} else if (currentLap < 0)
+			updateAchievement(AchievementName::UNCERTAIN);
 		prevCheckPoint = (checkPointNumber + checkPointCount - 1) % checkPointCount;
 		if (++nextCheckPoint == checkPointCount) {
 			nextCheckPoint = 0;
@@ -180,7 +191,8 @@ bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)
 			currentLap = -1;
 			startTime = std::chrono::steady_clock::now();
 			started = true;
-		}
+		} else if (currentLap > 0)
+			updateAchievement(AchievementName::UNCERTAIN);
 		nextCheckPoint = (checkPointNumber + 1) % checkPointCount;
 		if (--prevCheckPoint < 0) {
 			prevCheckPoint += checkPointCount;
@@ -197,6 +209,7 @@ bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)
 
 void AHydroCarPawn::onBegin()
 {
+	UE_LOG(LogTemp, Warning, TEXT("Begin Play"));
 	currentLap = 1;
 	nextCheckPoint = 0;
 	prevCheckPoint = checkPointCount - 1;
@@ -217,8 +230,8 @@ void AHydroCarPawn::onBegin()
 	milliseconds /= 10;
 	bestTime[6] = '0' + milliseconds % 10;
 	if (saved[S_CHECKPOINTS].size()) {
-		loadCheckpoint();
-		--saved[S_STATISTICS]["checkpoint"]["loaded"].get<int>();
+		UE_LOG(LogTemp, Warning, TEXT("Load Saved Checkpoint"));
+		loadCheckpointInternal();
 		started = true;
 	}
 }
@@ -235,16 +248,24 @@ void AHydroCarPawn::endGame()
 	OnEndGame();
 	saved[S_STATISTICS]["races"].get<int>()++;
 	saved[S_STATISTICS]["time"]["raced"].get<std::chrono::steady_clock::duration>() += duration;
+	if (currentLap > 0) {
+		updateAchievement(AchievementName::RACE_COMPLETED);
+	} else {
+		updateAchievement(AchievementName::RACE_UNCOMPLETED);
+	}
 }
 
 void AHydroCarPawn::dropCheckpoint()
 {
-	if (saved[S_CHECKPOINTS].size() > 1)
+	if (saved[S_CHECKPOINTS].size() > 1) {
 		saved[S_CHECKPOINTS].getList().pop_back();
-	saved[S_STATISTICS]["checkpoint"]["dropped"].get<std::chrono::steady_clock::duration>()++;
+		saved[S_STATISTICS]["checkpoint"]["dropped"].get<std::chrono::steady_clock::duration>()++;
+		updateAchievement(AchievementName::RECTIFY);
+		updateAchievement(AchievementName::PERFECTIONNIST);
+	}
 }
 
-void AHydroCarPawn::saveCheckpoint()
+void AHydroCarPawn::saveCheckpointInternal()
 {
 	SaveData sd(std::chrono::steady_clock::now() - startTime);
 	sd["nextCheckPoint"] = nextCheckPoint;
@@ -254,13 +275,16 @@ void AHydroCarPawn::saveCheckpoint()
 	GetVehicleMovementComponent()->GetBaseSnapshot(sd["mov"]);
 	OnSaveCheckpoint({&sd});
 	saved[S_CHECKPOINTS].push(sd);
+}
+
+void AHydroCarPawn::saveCheckpoint()
+{
+	saveCheckpointInternal();
 	++saved[S_STATISTICS]["checkpoint"]["saved"].get<int>();
 }
 
-void AHydroCarPawn::loadCheckpoint()
+void AHydroCarPawn::loadCheckpointInternal()
 {
-	if (!saved[S_CHECKPOINTS].size())
-		return;
 	auto &sd = saved[S_CHECKPOINTS].getList().back();
 	auto newStartTime = std::chrono::steady_clock::now() - sd.get<std::chrono::steady_clock::duration>();
 	saved[S_STATISTICS]["time"]["dropped"].get<std::chrono::steady_clock::duration>() += newStartTime - startTime;
@@ -270,5 +294,87 @@ void AHydroCarPawn::loadCheckpoint()
 	TeleportTo(sd["pos"], sd["rot"], false, false);
 	GetVehicleMovementComponent()->SetBaseSnapshot(sd["mov"]);
 	OnLoadCheckpoint({&sd});
+}
+
+void AHydroCarPawn::loadCheckpoint()
+{
+	if (!saved[S_CHECKPOINTS].size())
+		return;
+	loadCheckpointInternal();
 	saved[S_STATISTICS]["checkpoint"]["loaded"].get<int>()++;
+	updateAchievement(AchievementName::RETRY);
+	updateAchievement(AchievementName::RETRY_FOREVER);
+}
+
+void AHydroCarPawn::updateAchievement(AchievementName name)
+{
+	if (saved[S_ACHIEVEMENTS].empty()) {
+		for (int i = 0; i < AchievementName::COUNT; ++i)
+			saved[S_ACHIEVEMENTS].push();
+	}
+	auto &desc = AHydroCarGameModeBase::instance->achievements[name];
+	if (++saved[S_ACHIEVEMENTS].get<int>() % desc.completion == 0) {
+		if (saved[S_ACHIEVEMENTS].get<int>() == desc.completion) {
+			saved[S_STATISTICS]["uc"].get<int>() += desc.ucCompletion;
+			updateAchievement(AchievementName::ACHIEVEMENT_COLLECTOR);
+		} else
+			saved[S_STATISTICS]["uc"].get<int>() += desc.ucRecompletion;
+	}
+}
+
+TArray<FAchievementDisplay> AHydroCarPawn::queryAchievements()
+{
+	TArray<FAchievementDisplay> ret;
+	auto &sd = saved[S_ACHIEVEMENTS];
+	auto &ac = AHydroCarGameModeBase::instance->achievements;
+	const int sz = sd.size();
+	for (int i = 0; i < sz; ++i) {
+		auto &desc = ac[i];
+		int progress = sd[i];
+		if (progress >= desc.minForVisiblity)
+			ret.Add({desc.name, desc.description, progress, desc.completion, (progress < desc.completion) ? desc.ucCompletion : desc.ucRecompletion});
+	}
+	return ret;
+}
+
+void AHydroCarPawn::applyControl()
+{
+	if (controlDependency & WC_INPUT) {
+		UE_LOG(LogTemp, Warning, TEXT("Transfer focus to %p"), newInputTarget);
+		newInputTarget->bIsFocusable = true;
+		if (controlDependency & WC_OVERRIDE_DISPLAY) {
+			newInputTarget->GetOwningPlayer()->SetInputMode(FInputModeUIOnly().SetWidgetToFocus(newInputTarget->TakeWidget()));
+		} else
+			newInputTarget->GetOwningPlayer()->SetInputMode(FInputModeGameAndUI().SetWidgetToFocus(newInputTarget->TakeWidget()));
+	}
+}
+
+void AHydroCarPawn::updateControl(int8 newControl)
+{
+	UE_LOG(LogTemp, Warning, TEXT("UPDATE CONTROL %i -> %i"), controlDependency, newControl);
+	int8 gained = ~controlDependency & newControl;
+	int8 lost = controlDependency & ~newControl;
+
+	if (WC_INPUT & lost) {
+		if (auto pc = GetLocalViewingPlayerController()) {
+			UE_LOG(LogTemp, Warning, TEXT("Player get input"));
+			pc->bShowMouseCursor = false;
+			pc->SetInputMode(FInputModeGameOnly());
+		}
+	} else if (WC_INPUT & gained) {
+		UE_LOG(LogTemp, Warning, TEXT("Player loose input"));
+		GetLocalViewingPlayerController()->bShowMouseCursor = true;
+	}
+	if (WC_PAUSING & lost) {
+		if (auto pc = GetLocalViewingPlayerController()) {
+			pc->SetPause(false);
+			loadCheckpointInternal();
+		}
+		saved[S_CHECKPOINTS].getList().pop_back();
+	} else if (WC_PAUSING & gained) {
+		saveCheckpointInternal();
+		GetLocalViewingPlayerController()->SetPause(true);
+	}
+	controlDependency = newControl;
+	applyControl();
 }

@@ -7,15 +7,41 @@
 #include "Tools/BigSave.hpp"
 #include "UETools/FSaveData.h"
 #include <chrono>
+#include "HydroCarGameModeBase.h"
 #include "HydroCarPawn.generated.h"
+
+class UBaseWidget;
 
 // Enumerate all sections at the root of a player save
 UENUM()
 enum Section {
 	S_CHECKPOINTS,
-	S_ACHIEVEMENTS,
+	S_ACHIEVEMENTS, // List of int describing the progression
 	S_STATISTICS,
 	// Only add new sections at the end of this enum, right above this comment, to maintain save compatibility
+};
+
+UENUM()
+enum WidgetName {
+	W_OVERLAY,
+	W_MAIN_MENU,
+	W_STATISTICS,
+};
+
+USTRUCT(BlueprintType)
+struct FAchievementDisplay {
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadOnly)
+	FString name;
+	UPROPERTY(BlueprintReadOnly)
+	FString description;
+	UPROPERTY(BlueprintReadOnly)
+	int progression;
+	UPROPERTY(BlueprintReadOnly)
+	int completion;
+	UPROPERTY(BlueprintReadOnly)
+	int ucCompletion;
 };
 
 /**
@@ -58,10 +84,16 @@ public:
 	// UPROPERTY(Category = Race, EditAnywhere, BlueprintReadOnly)
 	// int maxCurrentLap = 3;
 
+	UFUNCTION(BlueprintCallable)
 	void dropCheckpoint();
+	UFUNCTION(BlueprintCallable)
 	void saveCheckpoint();
+	void saveCheckpointInternal();
+	UFUNCTION(BlueprintCallable)
 	void loadCheckpoint();
+	void loadCheckpointInternal();
 	void endGame();
+	void OnBack();
 
 	UFUNCTION(BlueprintCallable)
 	void onBegin();
@@ -69,11 +101,22 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnEndGame();
 
+	// Called when completing an achievement
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnAchievement(FAchievementDisplay achievement, bool isNew);
+
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnSaveCheckpoint(FSaveData datas);
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnLoadCheckpoint(FSaveData datas);
+
+	// Increase the counter of the given achievement
+	UFUNCTION(BlueprintCallable)
+	void updateAchievement(AchievementName name);
+
+	UFUNCTION(BlueprintCallable)
+	TArray<FAchievementDisplay> queryAchievements();
 
 	UPROPERTY(Category = Timer, VisibleInstanceOnly, BlueprintReadOnly)
 	FString timer = "Timer: 00:00.000";
@@ -145,12 +188,26 @@ public:
 	UPROPERTY(Category = Gearbox, EditDefaultsOnly, BlueprintReadOnly)
 	float GearAutoBoxLatency = 1.0f;
 
+	UPROPERTY(Category = Menu, BlueprintReadOnly)
+	UBaseWidget *display = nullptr;
+	UPROPERTY(Category = Menu, BlueprintReadWrite)
+	UBaseWidget *pauseMenu = nullptr;
+
 	// Air Physics
 	//void UpdateInAirControl(float DeltaTime);
 
 	// Return true if it was the expected checkpoint
 	bool reachCheckpoint(int checkPointNumber);
 
+	// Cumulated control of all widgets
+	int8 controlDependency = 0;
+	inline void setNewInputTarget(UBaseWidget *_newInputTarget) {
+		UE_LOG(LogTemp, Warning, TEXT("Set New Input Target"));
+		newInputTarget = _newInputTarget;
+	}
+
+	void applyControl();
+	void updateControl(int8 newControl);
 protected:
 
 	// Spring arm for the camera
@@ -174,9 +231,9 @@ protected:
 private:
 	void setDirection(int32 direction);
 	int32 cachedDirection = 0;
-
 	std::shared_ptr<BigSave> save = BigSave::loadShared("PlayerSave");
 	SaveData &saved = *save;
+	UBaseWidget *newInputTarget = nullptr;
 	std::chrono::steady_clock::time_point startTime;
 	bool started = false;
 

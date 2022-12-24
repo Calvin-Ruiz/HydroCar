@@ -10,7 +10,7 @@ public class HydroCar : ModuleRules
 		CppStandard = CppStandardVersion.Cpp20;
 		// bWarningsAsErrors = false;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "SlateCore" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
