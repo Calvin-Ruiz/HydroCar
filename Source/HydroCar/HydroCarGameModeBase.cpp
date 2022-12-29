@@ -15,5 +15,7 @@ void AHydroCarGameModeBase::StartPlay()
 
 void AHydroCarGameModeBase::respawn(AHydroCarPawn *self)
 {
-	RestartPlayer(self->GetController());
+	auto startSpot = FindPlayerStart(self->GetController());
+	if (startSpot)
+		self->TeleportTo(startSpot->GetActorLocation(), startSpot->GetActorRotation(), false, false);
 }

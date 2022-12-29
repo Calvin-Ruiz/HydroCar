@@ -97,14 +97,14 @@ private:
 		int8 gained = ~controlDependency & newDependency;
 		int8 lost = controlDependency & ~newDependency;
 		if (WC_OVERRIDE_DISPLAY & gained) {
-			if (WC_OVERRIDE_STATE & gained)
-				OnHide();
 			RemoveFromParent();
 		} else if (WC_OVERRIDE_DISPLAY & lost) {
-			UE_LOG(LogTemp, Warning, TEXT("Add to player screen"));
 			AddToPlayerScreen(priorityLevel);
-			if (WC_OVERRIDE_STATE & lost)
-				OnShow();
+		}
+		if (WC_OVERRIDE_STATE & gained) {
+			OnHide();
+		} else if (WC_OVERRIDE_STATE & lost) {
+			OnShow();
 		}
 		if (WC_INPUT & control & lost)
 			player->setNewInputTarget(this);

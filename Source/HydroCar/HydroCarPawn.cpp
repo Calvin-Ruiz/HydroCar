@@ -265,6 +265,10 @@ void AHydroCarPawn::endGame()
 	saved[S_CHECKPOINTS].truncate();
 	started = false;
 	AHydroCarGameModeBase::instance->respawn(this);
+	FBaseSnapshotData tmp;
+	GetVehicleMovementComponent()->GetBaseSnapshot(tmp);
+	tmp.AngularVelocity = tmp.LinearVelocity = FVector::Zero();
+	GetVehicleMovementComponent()->SetBaseSnapshot(tmp);
 	OnEndGame();
 	saved[S_STATISTICS]["races"].get<int>()++;
 	saved[S_STATISTICS]["time"]["raced"].get<std::chrono::steady_clock::duration>() += duration;
@@ -279,6 +283,10 @@ void AHydroCarPawn::onRestart()
 {
 	saved[S_CHECKPOINTS].truncate();
 	AHydroCarGameModeBase::instance->respawn(this);
+	FBaseSnapshotData tmp;
+	GetVehicleMovementComponent()->GetBaseSnapshot(tmp);
+	tmp.AngularVelocity = tmp.LinearVelocity = FVector::Zero();
+	GetVehicleMovementComponent()->SetBaseSnapshot(tmp);
 	started = false;
 	onBegin();
 }
