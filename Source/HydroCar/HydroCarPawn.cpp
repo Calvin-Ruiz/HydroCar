@@ -99,6 +99,26 @@ void AHydroCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("Back", IE_Released, this, &AHydroCarPawn::OnBack);
 }
 
+void AHydroCarPawn::BecomeViewTarget(APlayerController *PC)
+{
+	Super::BecomeViewTarget(PC);
+	static_cast<UBaseWidget *>(UUserWidget::CreateWidgetInstance(*PC, overlay, FName("Overlay")))->Bind(this);
+	if (pauseMenuClass)
+		pauseMenu = static_cast<UBaseWidget *>(UUserWidget::CreateWidgetInstance(*PC, pauseMenuClass, FName("PauseMenu")));
+	if (mainMenuClass) {
+		mainMenu = static_cast<UBaseWidget *>(UUserWidget::CreateWidgetInstance(*PC, mainMenuClass, FName("MainMenu")));
+		display->Open(mainMenu);
+	}
+}
+
+void AHydroCarPawn::EndViewTarget(APlayerController *PC)
+{
+	display->Close();
+	pauseMenu = nullptr;
+	mainMenu = nullptr;
+	Super::EndViewTarget(PC);
+}
+
 void AHydroCarPawn::setDirection(int32 direction)
 {
 	if (direction != cachedDirection) {
@@ -164,8 +184,8 @@ void AHydroCarPawn::NotifyActorEndOverlap(AActor* other)
 
 void AHydroCarPawn::OnBack()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Invoke Pause Menu"));
-	display->Open(pauseMenu);
+	if (pauseMenu)
+		display->Open(pauseMenu);
 }
 
 bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)
@@ -255,11 +275,19 @@ void AHydroCarPawn::endGame()
 	}
 }
 
+void AHydroCarPawn::onRestart()
+{
+	saved[S_CHECKPOINTS].truncate();
+	AHydroCarGameModeBase::instance->respawn(this);
+	started = false;
+	onBegin();
+}
+
 void AHydroCarPawn::dropCheckpoint()
 {
 	if (saved[S_CHECKPOINTS].size() > 1) {
 		saved[S_CHECKPOINTS].getList().pop_back();
-		saved[S_STATISTICS]["checkpoint"]["dropped"].get<std::chrono::steady_clock::duration>()++;
+		saved[S_STATISTICS]["checkpoint"]["dropped"].get<int>()++;
 		updateAchievement(AchievementName::RECTIFY);
 		updateAchievement(AchievementName::PERFECTIONNIST);
 	}
@@ -315,10 +343,13 @@ void AHydroCarPawn::updateAchievement(AchievementName name)
 	auto &desc = AHydroCarGameModeBase::instance->achievements[name];
 	if (++saved[S_ACHIEVEMENTS].get<int>() % desc.completion == 0) {
 		if (saved[S_ACHIEVEMENTS].get<int>() == desc.completion) {
+			OnAchievement({desc.name, desc.description, desc.completion, desc.completion, desc.ucCompletion}, true);
 			saved[S_STATISTICS]["uc"].get<int>() += desc.ucCompletion;
 			updateAchievement(AchievementName::ACHIEVEMENT_COLLECTOR);
-		} else
+		} else {
+			OnAchievement({desc.name, desc.description, saved[S_ACHIEVEMENTS].get<int>(), desc.completion, desc.ucRecompletion}, false);
 			saved[S_STATISTICS]["uc"].get<int>() += desc.ucRecompletion;
+		}
 	}
 }
 

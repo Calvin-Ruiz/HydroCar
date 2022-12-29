@@ -13,19 +13,12 @@
 class UBaseWidget;
 
 // Enumerate all sections at the root of a player save
-UENUM()
+UENUM(BlueprintType)
 enum Section {
 	S_CHECKPOINTS,
 	S_ACHIEVEMENTS, // List of int describing the progression
 	S_STATISTICS,
 	// Only add new sections at the end of this enum, right above this comment, to maintain save compatibility
-};
-
-UENUM()
-enum WidgetName {
-	W_OVERLAY,
-	W_MAIN_MENU,
-	W_STATISTICS,
 };
 
 USTRUCT(BlueprintType)
@@ -56,6 +49,9 @@ public:
 	AHydroCarPawn();
 	virtual void NotifyActorBeginOverlap(AActor *other) override;
 	virtual void NotifyActorEndOverlap(AActor* other) override;
+
+	virtual void BecomeViewTarget(APlayerController *PC) override;
+	virtual void EndViewTarget(APlayerController *PC) override;
 
 	virtual void Tick(float deltaTime) override; // Function that is called every frame
 
@@ -98,6 +94,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void onBegin();
 
+	UFUNCTION(BlueprintCallable)
+	void onRestart();
+
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnEndGame();
 
@@ -135,6 +134,19 @@ public:
 	int nextCheckPoint;
 	UPROPERTY(Category = Game, EditDefaultsOnly, BlueprintReadOnly)
 	int currentLap = 0;
+
+	UPROPERTY(Category = Menu, EditDefaultsOnly, meta = (DisplayName = "Overlay"))
+	TSubclassOf<UBaseWidget> overlay;
+	UPROPERTY(Category = Menu, EditDefaultsOnly, meta = (DisplayName = "Main Menu"))
+	TSubclassOf<UBaseWidget> mainMenuClass;
+	UPROPERTY(Category = Menu, EditDefaultsOnly, meta = (DisplayName = "Pause Menu"))
+	TSubclassOf<UBaseWidget> pauseMenuClass;
+	UPROPERTY(Category = Menu, BlueprintReadOnly)
+	UBaseWidget *display = nullptr;
+	UPROPERTY(Category = Menu, BlueprintReadOnly)
+	UBaseWidget *mainMenu = nullptr;
+	UPROPERTY()
+	UBaseWidget *pauseMenu = nullptr;
 
 	// Tire variables
 	UPROPERTY(Category = Tire, EditDefaultsOnly, BlueprintReadOnly)
@@ -187,11 +199,6 @@ public:
 	float GearSwitchTime = 0.15f;
 	UPROPERTY(Category = Gearbox, EditDefaultsOnly, BlueprintReadOnly)
 	float GearAutoBoxLatency = 1.0f;
-
-	UPROPERTY(Category = Menu, BlueprintReadOnly)
-	UBaseWidget *display = nullptr;
-	UPROPERTY(Category = Menu, BlueprintReadWrite)
-	UBaseWidget *pauseMenu = nullptr;
 
 	// Air Physics
 	//void UpdateInAirControl(float DeltaTime);
