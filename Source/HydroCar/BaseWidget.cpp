@@ -42,14 +42,14 @@ void UBaseWidget::detach()
 
 void UBaseWidget::Close()
 {
-    UE_LOG(LogTemp, Warning, TEXT("Closing window %p parent %p"), this, parent);
+    // UE_LOG(LogTemp, Warning, TEXT("Closing window %p parent %p"), this, parent);
     detach();
     if (parent) {
         int idx = parent->childs.Find(this);
         parent->childs.RemoveAt(idx);
         expandControl(parent, idx);
     } else {
-        UE_LOG(LogTemp, Warning, TEXT("Closing main window"));
+        // UE_LOG(LogTemp, Warning, TEXT("Closing main window"));
         player->display = nullptr;
         player->updateControl(0);
     }

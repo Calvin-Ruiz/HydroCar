@@ -209,7 +209,7 @@ public:
 	// Cumulated control of all widgets
 	int8 controlDependency = 0;
 	inline void setNewInputTarget(UBaseWidget *_newInputTarget) {
-		UE_LOG(LogTemp, Warning, TEXT("Set New Input Target"));
+		// UE_LOG(LogTemp, Warning, TEXT("Set New Input Target"));
 		newInputTarget = _newInputTarget;
 	}
 

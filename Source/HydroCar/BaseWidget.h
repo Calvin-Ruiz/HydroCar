@@ -93,7 +93,7 @@ private:
 	inline bool updateControlDependency(int8 newDependency) {
 		if (newDependency == controlDependency)
 			return true;
-		UE_LOG(LogTemp, Warning, TEXT("Update Dependency %i -> %i"), controlDependency, newDependency);
+		// UE_LOG(LogTemp, Warning, TEXT("Update Dependency %i -> %i"), controlDependency, newDependency);
 		int8 gained = ~controlDependency & newDependency;
 		int8 lost = controlDependency & ~newDependency;
 		if (WC_OVERRIDE_DISPLAY & gained) {

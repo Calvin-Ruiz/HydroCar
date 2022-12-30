@@ -349,13 +349,15 @@ void AHydroCarPawn::updateAchievement(AchievementName name)
 			saved[S_ACHIEVEMENTS].push();
 	}
 	auto &desc = AHydroCarGameModeBase::instance->achievements[name];
-	if (++saved[S_ACHIEVEMENTS].get<int>() % desc.completion == 0) {
-		if (saved[S_ACHIEVEMENTS].get<int>() == desc.completion) {
+	int &progress = saved[S_ACHIEVEMENTS][name];
+	// UE_LOG(LogTemp, Warning, TEXT("Update Achievement %s"), *desc.name);
+	if (++progress % desc.completion == 0) {
+		if (progress == desc.completion) {
 			OnAchievement({desc.name, desc.description, desc.completion, desc.completion, desc.ucCompletion}, true);
 			saved[S_STATISTICS]["uc"].get<int>() += desc.ucCompletion;
 			updateAchievement(AchievementName::ACHIEVEMENT_COLLECTOR);
 		} else {
-			OnAchievement({desc.name, desc.description, saved[S_ACHIEVEMENTS].get<int>(), desc.completion, desc.ucRecompletion}, false);
+			OnAchievement({desc.name, desc.description, progress, desc.completion, desc.ucRecompletion}, false);
 			saved[S_STATISTICS]["uc"].get<int>() += desc.ucRecompletion;
 		}
 	}
@@ -379,7 +381,7 @@ TArray<FAchievementDisplay> AHydroCarPawn::queryAchievements()
 void AHydroCarPawn::applyControl()
 {
 	if (controlDependency & WC_INPUT) {
-		UE_LOG(LogTemp, Warning, TEXT("Transfer focus to %p"), newInputTarget);
+		// UE_LOG(LogTemp, Warning, TEXT("Transfer focus to %p"), newInputTarget);
 		newInputTarget->bIsFocusable = true;
 		if (controlDependency & WC_OVERRIDE_DISPLAY) {
 			newInputTarget->GetOwningPlayer()->SetInputMode(FInputModeUIOnly().SetWidgetToFocus(newInputTarget->TakeWidget()));
@@ -390,18 +392,18 @@ void AHydroCarPawn::applyControl()
 
 void AHydroCarPawn::updateControl(int8 newControl)
 {
-	UE_LOG(LogTemp, Warning, TEXT("UPDATE CONTROL %i -> %i"), controlDependency, newControl);
+	// UE_LOG(LogTemp, Warning, TEXT("UPDATE CONTROL %i -> %i"), controlDependency, newControl);
 	int8 gained = ~controlDependency & newControl;
 	int8 lost = controlDependency & ~newControl;
 
 	if (WC_INPUT & lost) {
 		if (auto pc = GetLocalViewingPlayerController()) {
-			UE_LOG(LogTemp, Warning, TEXT("Player get input"));
+			// UE_LOG(LogTemp, Warning, TEXT("Player get input"));
 			pc->bShowMouseCursor = false;
 			pc->SetInputMode(FInputModeGameOnly());
 		}
 	} else if (WC_INPUT & gained) {
-		UE_LOG(LogTemp, Warning, TEXT("Player loose input"));
+		// UE_LOG(LogTemp, Warning, TEXT("Player loose input"));
 		GetLocalViewingPlayerController()->bShowMouseCursor = true;
 	}
 	if (WC_PAUSING & lost) {
