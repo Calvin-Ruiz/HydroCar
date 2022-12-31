@@ -322,9 +322,12 @@ void AHydroCarPawn::saveCheckpoint()
 void AHydroCarPawn::loadCheckpointInternal()
 {
 	auto &sd = saved[S_CHECKPOINTS].getList().back();
-	auto newStartTime = std::chrono::steady_clock::now() - sd.get<std::chrono::steady_clock::duration>();
-	saved[S_STATISTICS]["time"]["dropped"].get<std::chrono::steady_clock::duration>() += newStartTime - startTime;
-	startTime = newStartTime;
+	if (started) {
+		auto newStartTime = std::chrono::steady_clock::now() - sd.get<std::chrono::steady_clock::duration>();
+		saved[S_STATISTICS]["time"]["dropped"].get<std::chrono::steady_clock::duration>() += newStartTime - startTime;
+		startTime = newStartTime;
+	} else
+		startTime = std::chrono::steady_clock::now();
 	nextCheckPoint = sd["nextCheckPoint"];
 	currentLap = sd["currentLap"];
 	TeleportTo(sd["pos"], sd["rot"], false, false);

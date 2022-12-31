@@ -55,7 +55,7 @@ enum AchievementName {
     FAchievementDescription{"Rectify", "Drop a checkpoint", 1, 1, 100, 0}, \
     FAchievementDescription{"Perfectionnist", "Drop several checkpoints", 10, 1, 300, 10}, \
     FAchievementDescription{"Uncertain", "Reach previous checkpoint multiple times", 5, 2, 300, 30}, \
-    FAchievementDescription{"Backward", "Go backward", 1, 1, 100, 1}, \
+    FAchievementDescription{"Backward", "Go backward", 1, 1, 100, 0}, \
     FAchievementDescription{"Retry Forever", "Retry again, again, again...", 100, 10, 1000, 10}, \
     FAchievementDescription{"Achievement Collector", "Complete all the achievements once, excepted this one", int(AchievementName::COUNT) - 1, 5, 3000, 0} \
 }
