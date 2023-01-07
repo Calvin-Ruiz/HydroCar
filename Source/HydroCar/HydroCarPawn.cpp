@@ -359,7 +359,7 @@ void AHydroCarPawn::updateAchievement(AchievementName name)
 			OnAchievement({desc.name, desc.description, desc.completion, desc.completion, desc.ucCompletion}, true);
 			saved[S_STATISTICS]["uc"].get<int>() += desc.ucCompletion;
 			updateAchievement(AchievementName::ACHIEVEMENT_COLLECTOR);
-		} else {
+		} else if (desc.ucRecompletion) {
 			OnAchievement({desc.name, desc.description, progress, desc.completion, desc.ucRecompletion}, false);
 			saved[S_STATISTICS]["uc"].get<int>() += desc.ucRecompletion;
 		}

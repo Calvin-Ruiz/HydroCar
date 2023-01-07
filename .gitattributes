@@ -4,7 +4,6 @@
 *Content/C*.uasset filter=lfs diff=lfs merge=lfs -text
 *Content/D*.uasset filter=lfs diff=lfs merge=lfs -text
 *Content/E*.uasset filter=lfs diff=lfs merge=lfs -text
-*Content/G*.uasset filter=lfs diff=lfs merge=lfs -text
 *Content/S*.uasset filter=lfs diff=lfs merge=lfs -text
 *Content/V*.uasset filter=lfs diff=lfs merge=lfs -text
 *Content/W*.uasset filter=lfs diff=lfs merge=lfs -text
