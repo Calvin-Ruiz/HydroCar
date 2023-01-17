@@ -97,6 +97,8 @@ void AHydroCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("DropCheckpoint", IE_Pressed, this, &AHydroCarPawn::dropCheckpoint);
 	PlayerInputComponent->BindAction("DropCheckpoint", IE_Released, this, &AHydroCarPawn::loadCheckpoint);
 	PlayerInputComponent->BindAction("Back", IE_Released, this, &AHydroCarPawn::OnBack);
+	PlayerInputComponent->BindAction("Boost", IE_Pressed, this, &AHydroCarPawn::OnBoost);
+
 }
 
 void AHydroCarPawn::BecomeViewTarget(APlayerController *PC)
@@ -186,6 +188,11 @@ void AHydroCarPawn::OnBack()
 {
 	if (pauseMenu)
 		display->Open(pauseMenu);
+}
+
+void AHydroCarPawn::OnBoost()
+{
+	
 }
 
 bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)

@@ -90,6 +90,7 @@ public:
 	void loadCheckpointInternal();
 	void endGame();
 	void OnBack();
+	void OnBoost();
 
 	UFUNCTION(BlueprintCallable)
 	void onBegin();
