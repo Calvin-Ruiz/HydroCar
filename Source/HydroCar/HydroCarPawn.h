@@ -30,11 +30,11 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	FString description;
 	UPROPERTY(BlueprintReadOnly)
-	int progression;
+	int progression = 0;
 	UPROPERTY(BlueprintReadOnly)
-	int completion;
+	int completion = 1;
 	UPROPERTY(BlueprintReadOnly)
-	int ucCompletion;
+	int ucCompletion = 0;
 };
 
 /**
@@ -99,7 +99,13 @@ public:
 	void onRestart();
 
 	UFUNCTION(BlueprintImplementableEvent)
+	void OnBeginGame();
+
+	UFUNCTION(BlueprintImplementableEvent)
 	void OnEndGame();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void UpdateRPM(float EngineRPM);
 
 	// Called when completing an achievement
 	UFUNCTION(BlueprintImplementableEvent)
@@ -201,6 +207,16 @@ public:
 	UPROPERTY(Category = Gearbox, EditDefaultsOnly, BlueprintReadOnly)
 	float GearAutoBoxLatency = 1.0f;
 
+	// Amount of hydrogen available
+	UPROPERTY(Category = Hydrogen, BlueprintReadOnly)
+	float Hydrogen;
+	UPROPERTY(Category = Hydrogen, EditDefaultsOnly, BlueprintReadOnly)
+	float HydrogenCapacity = 10.f;
+	UPROPERTY(Category = Hydrogen, EditDefaultsOnly, BlueprintReadOnly)
+	float HydrogenRenegenation = 0.f;
+	UPROPERTY(Category = Hydrogen, BlueprintReadOnly)
+	bool UsingHydrogen = false;
+
 	// Air Physics
 	//void UpdateInAirControl(float DeltaTime);
 
@@ -242,6 +258,7 @@ private:
 	std::shared_ptr<BigSave> save = BigSave::loadShared("PlayerSave");
 	SaveData &saved = *save;
 	UBaseWidget *newInputTarget = nullptr;
+	float lastRPM;
 	std::chrono::steady_clock::time_point startTime;
 	bool started = false;
 

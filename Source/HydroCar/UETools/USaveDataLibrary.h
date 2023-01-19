@@ -2,17 +2,24 @@
 
 #include "CoreMinimal.h"
 #include "FSaveData.h"
-#include "../Tools/SaveData.hpp"
+#include "../Tools/BigSave.hpp"
 #include <chrono>
+#include <memory>
 #include "USaveDataLibrary.generated.h"
 
-USTRUCT(BlueprintType)
+USTRUCT(BlueprintType, NoExport, meta = (DontUseGenericSpawnObject))
+struct FBigSave {
+	std::shared_ptr<BigSave> base;
+	UPROPERTY(BlueprintReadOnly)
+    FSaveData root = FSaveData{base.get()};
+};
+
+USTRUCT(BlueprintType, NoExport, meta = (DontUseGenericSpawnObject))
 struct FSaveDataRoot {
-    GENERATED_BODY()
 private:
     SaveData base;
 public:
-    UPROPERTY(BlueprintReadWrite)
+    UPROPERTY(BlueprintReadOnly)
     FSaveData root = FSaveData{&base};
 };
 
@@ -82,50 +89,54 @@ public:
     }
     // Get value as MT::STRING type
     UFUNCTION(Category = SaveData, BlueprintPure)
-    static FString AsString(FSaveData wrapper) {
+    static FString AsString(FSaveData wrapper, const FString &defaultValue) {
+        if (self.get().empty()) {
+            SetString(wrapper, defaultValue);
+            return defaultValue;
+        }
         return FString(self.get().size(), UTF8_TO_TCHAR(self.get().data()));
     }
     // Get value as MT::VEC3 type
     UFUNCTION(Category = SaveData, BlueprintPure)
-    static FVector AsVector(FSaveData wrapper) {
-        return self.get<FVector>();
+    static FVector AsVector(FSaveData wrapper, const FVector &defaultValue) {
+        return self.get<FVector>(defaultValue);
     }
     // Get value as MT::VEC3 type
     UFUNCTION(Category = SaveData, BlueprintPure)
-    static FRotator AsRotator(FSaveData wrapper) {
-        return self.get<FRotator>();
+    static FRotator AsRotator(FSaveData wrapper, const FRotator &defaultValue) {
+        return self.get<FRotator>(defaultValue);
     }
     // Get value as MT::FLOAT type
     UFUNCTION(Category = SaveData, BlueprintPure)
-    static float AsFloat(FSaveData wrapper) {
-        return self.get<float>();
+    static float AsFloat(FSaveData wrapper, float defaultValue = 0) {
+        return self.get<float>(defaultValue);
     }
     // Get value as any type from MT::CHAR to MT::INT
     UFUNCTION(Category = SaveData, BlueprintPure)
-    static int AsInt(FSaveData wrapper, MT type) {
+    static int AsInt(FSaveData wrapper, MT type, int defaultValue = 0) {
         switch (type) {
             case MT::CHAR:
-                return self.get<int8_t>();
+                return self.get<int8_t>(defaultValue);
             case MT::UCHAR:
-                return self.get<uint8_t>();
+                return self.get<uint8_t>(defaultValue);
             case MT::SHORT:
-                return self.get<int16_t>();
+                return self.get<int16_t>(defaultValue);
             case MT::USHORT:
-                return self.get<uint16_t>();
+                return self.get<uint16_t>(defaultValue);
             case MT::INT:
-                return self.get<int32_t>();
+                return self.get<int32_t>(defaultValue);
         }
         return 0;
     }
     // Get value as MT::LONG or MT::ULONG
     UFUNCTION(Category = SaveData, BlueprintPure)
-    static int64 AsLong(FSaveData wrapper, MT type) {
-        return (type == MT::UINT) ? self.get<uint32_t>() : self.get<int64>();
+    static int64 AsLong(FSaveData wrapper, MT type, int64 defaultValue = 0) {
+        return (type == MT::UINT) ? self.get<uint32_t>(defaultValue) : self.get<int64>(defaultValue);
     }
     // Get boolean as MT::CHAR type
     UFUNCTION(Category = SaveData, BlueprintPure)
-    static bool AsBool(FSaveData wrapper) {
-        return self.get<bool>();
+    static bool AsBool(FSaveData wrapper, bool defaultValue = false) {
+        return self.get<bool>(defaultValue);
     }
     // Get value as ellapsed time in milliseconds
     UFUNCTION(Category = SaveData, BlueprintPure)
@@ -200,6 +211,11 @@ public:
     UFUNCTION(Category = SaveData, BlueprintCallable)
     static FSaveDataRoot Create() {
         return {};
+    }
+    // Open a BigSave
+    UFUNCTION(Category = SaveData, BlueprintCallable)
+    static FBigSave Open(const FString &filename) {
+        return FBigSave{.base=BigSave::loadShared(TCHAR_TO_UTF8(*filename))};
     }
     UFUNCTION(Category = SaveData, BlueprintCallable)
     static FSaveDataRoot Load(TArray<uint8> datas) {

@@ -23,7 +23,7 @@ AHydroCarPawn::AHydroCarPawn()
 	//Vehicle4W->MaxNormalizedTireLoadFiltered = MaxTireLoadFiltered;
 
 	// Torque setup
-	Vehicle4W->EngineSetup.MaxRPM = MaxEngineRPM;
+	Vehicle4W->EngineSetup.MaxRPM = saved[S_STATISTICS]["MaxRPM"].get<float>(MaxEngineRPM);
 	Vehicle4W->EngineSetup.TorqueCurve.GetRichCurve()->Reset();
 	Vehicle4W->EngineSetup.TorqueCurve.GetRichCurve()->AddKey(FirstTorqueMin, FirstTorqueMax);
 	Vehicle4W->EngineSetup.TorqueCurve.GetRichCurve()->AddKey(SecondTorqueMin, SecondTorqueMax);
@@ -78,6 +78,24 @@ void AHydroCarPawn::Tick(float deltaTime)
 		timer[8] = '0' + milliseconds % 10;
 		milliseconds /= 10;
 		timer[7] = '0' + milliseconds % 10;
+	}
+
+	if (UsingHydrogen) {
+		Hydrogen -= deltaTime;
+		if (Hydrogen <= 0) {
+			Hydrogen = 0;
+			UsingHydrogen = false;
+		}
+	} else if (Hydrogen < HydrogenCapacity) {
+		Hydrogen += HydrogenRenegenation * deltaTime;
+		if (Hydrogen > HydrogenCapacity)
+			Hydrogen = HydrogenCapacity;
+	}
+
+	float RPM = static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->GetEngineRotationSpeed();
+	if (abs(RPM - lastRPM) >= 10) {
+		UpdateRPM(RPM);
+		lastRPM = RPM;
 	}
 	//UpdateInAirControl(DeltaTime);
 }
@@ -192,7 +210,7 @@ void AHydroCarPawn::OnBack()
 
 void AHydroCarPawn::OnBoost()
 {
-	
+
 }
 
 bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)
@@ -236,10 +254,11 @@ bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)
 
 void AHydroCarPawn::onBegin()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Begin Play"));
+	UE_LOG(LogTemp, Display, TEXT("Begin Play"));
 	currentLap = 1;
 	nextCheckPoint = 0;
 	prevCheckPoint = checkPointCount - 1;
+	lastRPM = -10;
 	if (saved[S_CHECKPOINTS].empty())
 		return;
 	int milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(saved[S_CHECKPOINTS].get<std::chrono::steady_clock::duration>()).count();
@@ -256,11 +275,14 @@ void AHydroCarPawn::onBegin()
 	bestTime[7] = '0' + milliseconds % 10;
 	milliseconds /= 10;
 	bestTime[6] = '0' + milliseconds % 10;
+	Hydrogen = HydrogenCapacity = saved[S_STATISTICS]["H2"]["capacity"].get<float>(HydrogenCapacity);
+	HydrogenRenegenation = saved[S_STATISTICS]["H2"]["recovery"].get<float>(HydrogenRenegenation);
 	if (saved[S_CHECKPOINTS].size()) {
-		UE_LOG(LogTemp, Warning, TEXT("Load Saved Checkpoint"));
+		UE_LOG(LogTemp, Display, TEXT("Load Saved Checkpoint"));
 		loadCheckpointInternal();
 		started = true;
 	}
+	OnBeginGame();
 }
 
 void AHydroCarPawn::endGame()
@@ -272,10 +294,10 @@ void AHydroCarPawn::endGame()
 	saved[S_CHECKPOINTS].truncate();
 	started = false;
 	AHydroCarGameModeBase::instance->respawn(this);
-	FBaseSnapshotData tmp;
-	GetVehicleMovementComponent()->GetBaseSnapshot(tmp);
+	auto tmp = static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->GetSnapshot();
 	tmp.AngularVelocity = tmp.LinearVelocity = FVector::Zero();
-	GetVehicleMovementComponent()->SetBaseSnapshot(tmp);
+	tmp.EngineRPM = 0;
+	static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->SetSnapshot(tmp);
 	OnEndGame();
 	saved[S_STATISTICS]["races"].get<int>()++;
 	saved[S_STATISTICS]["time"]["raced"].get<std::chrono::steady_clock::duration>() += duration;
@@ -290,10 +312,10 @@ void AHydroCarPawn::onRestart()
 {
 	saved[S_CHECKPOINTS].truncate();
 	AHydroCarGameModeBase::instance->respawn(this);
-	FBaseSnapshotData tmp;
-	GetVehicleMovementComponent()->GetBaseSnapshot(tmp);
+	auto tmp = static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->GetSnapshot();
 	tmp.AngularVelocity = tmp.LinearVelocity = FVector::Zero();
-	GetVehicleMovementComponent()->SetBaseSnapshot(tmp);
+	tmp.EngineRPM = 0;
+	static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->SetSnapshot(tmp);
 	started = false;
 	onBegin();
 }
@@ -311,11 +333,14 @@ void AHydroCarPawn::dropCheckpoint()
 void AHydroCarPawn::saveCheckpointInternal()
 {
 	SaveData sd(std::chrono::steady_clock::now() - startTime);
+	sd["prevCheckPoint"] = prevCheckPoint;
 	sd["nextCheckPoint"] = nextCheckPoint;
 	sd["currentLap"] = currentLap;
+	sd["hydrogen"] = Hydrogen;
 	sd["pos"] = GetActorLocation();
 	sd["rot"] = GetActorRotation();
 	GetVehicleMovementComponent()->GetBaseSnapshot(sd["mov"]);
+	sd["rpm"] = static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->GetEngineRotationSpeed();
 	OnSaveCheckpoint({&sd});
 	saved[S_CHECKPOINTS].push(sd);
 }
@@ -335,10 +360,15 @@ void AHydroCarPawn::loadCheckpointInternal()
 		startTime = newStartTime;
 	} else
 		startTime = std::chrono::steady_clock::now();
+	prevCheckPoint = sd["prevCheckPoint"];
 	nextCheckPoint = sd["nextCheckPoint"];
 	currentLap = sd["currentLap"];
+	Hydrogen = sd["hydrogen"];
 	TeleportTo(sd["pos"], sd["rot"], false, false);
 	GetVehicleMovementComponent()->SetBaseSnapshot(sd["mov"]);
+	auto tmp = static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->GetSnapshot();
+	tmp.EngineRPM = sd["rpm"];
+	static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->SetSnapshot(tmp);
 	OnLoadCheckpoint({&sd});
 }
 
@@ -367,6 +397,7 @@ void AHydroCarPawn::updateAchievement(AchievementName name)
 			saved[S_STATISTICS]["uc"].get<int>() += desc.ucCompletion;
 			updateAchievement(AchievementName::ACHIEVEMENT_COLLECTOR);
 		} else if (desc.ucRecompletion) {
+			UE_LOG(LogTemp, Display, TEXT("Recompletion grant %i"), desc.ucRecompletion);
 			OnAchievement({desc.name, desc.description, progress, desc.completion, desc.ucRecompletion}, false);
 			saved[S_STATISTICS]["uc"].get<int>() += desc.ucRecompletion;
 		}
