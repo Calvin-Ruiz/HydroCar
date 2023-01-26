@@ -6,6 +6,7 @@
 #include "HydroCarGameModeBase.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
@@ -23,7 +24,6 @@ AHydroCarPawn::AHydroCarPawn()
 	//Vehicle4W->MaxNormalizedTireLoadFiltered = MaxTireLoadFiltered;
 
 	// Torque setup
-	Vehicle4W->EngineSetup.MaxRPM = saved[S_STATISTICS]["MaxRPM"].get<float>(MaxEngineRPM);
 	Vehicle4W->EngineSetup.TorqueCurve.GetRichCurve()->Reset();
 	Vehicle4W->EngineSetup.TorqueCurve.GetRichCurve()->AddKey(FirstTorqueMin, FirstTorqueMax);
 	Vehicle4W->EngineSetup.TorqueCurve.GetRichCurve()->AddKey(SecondTorqueMin, SecondTorqueMax);
@@ -59,6 +59,15 @@ AHydroCarPawn::AHydroCarPawn()
 	Camera->FieldOfView = 90.0f;
 }
 
+void AHydroCarPawn::loadConfig(const FString &playerName)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Loading config for player %s, note that %p"), *playerName, Saved.handle);
+	if (!saved.getSaveName().empty())
+		saved.store();
+	saved.reset();
+	saved.open(TCHAR_TO_UTF8(*playerName));
+}
+
 void AHydroCarPawn::Tick(float deltaTime)
 {
 	Super::Tick(deltaTime);
@@ -81,13 +90,34 @@ void AHydroCarPawn::Tick(float deltaTime)
 	}
 
 	if (UsingHydrogen) {
+		FBaseSnapshotData data;
+		GetVehicleMovementComponent()->GetBaseSnapshot(data);
+		data.AngularVelocity.X = 0;
+		data.AngularVelocity.Z = 0;
+		const float acceleration = deltaTime * HydrogenThruster;
+		if (leftThrust) {
+			if (rightThrust) {
+				data.AngularVelocity.Y = 0;
+				data.LinearVelocity += GetMesh()->GetUpVector() * acceleration * 2;
+			} else {
+				data.AngularVelocity.Y = 0.1 * HydrogenThruster;
+				data.LinearVelocity += GetMesh()->GetUpVector() * acceleration;
+			}
+		} else if (rightThrust) {
+			data.AngularVelocity.Y = -0.1 * HydrogenThruster;
+			data.LinearVelocity += GetMesh()->GetUpVector() * acceleration;
+		}
+		if (backThrust) {
+			data.LinearVelocity += GetMesh()->GetForwardVector() * acceleration;
+		}
+		GetVehicleMovementComponent()->SetBaseSnapshot(data);
 		Hydrogen -= deltaTime;
 		if (Hydrogen <= 0) {
 			Hydrogen = 0;
 			UsingHydrogen = false;
 		}
 	} else if (Hydrogen < HydrogenCapacity) {
-		Hydrogen += HydrogenRenegenation * deltaTime;
+		Hydrogen += HydrogenRenegenation * HydrogenThruster * deltaTime;
 		if (Hydrogen > HydrogenCapacity)
 			Hydrogen = HydrogenCapacity;
 	}
@@ -104,8 +134,9 @@ void AHydroCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	bool isQwerty = saved[S_SETTINGS]["qwerty"];
 	PlayerInputComponent->BindAxis("Throttle", this, &AHydroCarPawn::ApplyThrottle);
-	PlayerInputComponent->BindAxis("Steer", this, &AHydroCarPawn::ApplySteering);
+	PlayerInputComponent->BindAxis(isQwerty ? "Steer2" : "Steer", this, &AHydroCarPawn::ApplySteering);
 	PlayerInputComponent->BindAxis("LookUp", this, &AHydroCarPawn::Lookup);
 	PlayerInputComponent->BindAxis("Turn", this, &AHydroCarPawn::Turn);
 
@@ -121,18 +152,21 @@ void AHydroCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 void AHydroCarPawn::BecomeViewTarget(APlayerController *PC)
 {
+	loadConfig(TEXT("Player") + FString::FromInt(PC->GetLocalPlayer()->GetLocalPlayerIndex()));
 	Super::BecomeViewTarget(PC);
-	static_cast<UBaseWidget *>(UUserWidget::CreateWidgetInstance(*PC, overlay, FName("Overlay")))->Bind(this);
+	auto tmp = std::to_string(PC->GetLocalPlayer()->GetLocalPlayerIndex());
+	static_cast<UBaseWidget *>(UUserWidget::CreateWidgetInstance(*PC, overlay, FName(("Overlay"+tmp).data())))->Bind(this);
 	if (pauseMenuClass)
-		pauseMenu = static_cast<UBaseWidget *>(UUserWidget::CreateWidgetInstance(*PC, pauseMenuClass, FName("PauseMenu")));
+		pauseMenu = static_cast<UBaseWidget *>(UUserWidget::CreateWidgetInstance(*PC, pauseMenuClass, FName(("PauseMenu"+tmp).data())));
 	if (mainMenuClass) {
-		mainMenu = static_cast<UBaseWidget *>(UUserWidget::CreateWidgetInstance(*PC, mainMenuClass, FName("MainMenu")));
+		mainMenu = static_cast<UBaseWidget *>(UUserWidget::CreateWidgetInstance(*PC, mainMenuClass, FName(("MainMenu"+tmp).data())));
 		display->Open(mainMenu);
 	}
 }
 
 void AHydroCarPawn::EndViewTarget(APlayerController *PC)
 {
+	UE_LOG(LogTemp, Warning, TEXT("End of Player%i"));
 	display->Close();
 	pauseMenu = nullptr;
 	mainMenu = nullptr;
@@ -167,14 +201,14 @@ void AHydroCarPawn::ApplySteering(float val)
 void AHydroCarPawn::Lookup(float val)
 {
 	if (val != 0.f) {
-		AddControllerPitchInput(val);
+		AddControllerPitchInput(val * viewRotationSpeed);
 	}
 }
 
 void AHydroCarPawn::Turn(float val)
 {
 	if (val != 0.f) {
-		AddControllerYawInput(val);
+		AddControllerYawInput(val * viewRotationSpeed);
 	}
 }
 
@@ -254,13 +288,10 @@ bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)
 
 void AHydroCarPawn::onBegin()
 {
-	UE_LOG(LogTemp, Display, TEXT("Begin Play"));
 	currentLap = 1;
 	nextCheckPoint = 0;
 	prevCheckPoint = checkPointCount - 1;
 	lastRPM = -10;
-	if (saved[S_CHECKPOINTS].empty())
-		return;
 	int milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(saved[S_CHECKPOINTS].get<std::chrono::steady_clock::duration>()).count();
 	bestTime[14] = '0' + milliseconds % 10;
 	milliseconds /= 10;
@@ -275,8 +306,12 @@ void AHydroCarPawn::onBegin()
 	bestTime[7] = '0' + milliseconds % 10;
 	milliseconds /= 10;
 	bestTime[6] = '0' + milliseconds % 10;
+	UChaosWheeledVehicleMovementComponent* Vehicle4W = CastChecked<UChaosWheeledVehicleMovementComponent>(GetVehicleMovement());
+	Vehicle4W->EngineSetup.MaxRPM = saved[S_STATISTICS]["MaxRPM"].get<float>(MaxEngineRPM);
 	Hydrogen = HydrogenCapacity = saved[S_STATISTICS]["H2"]["capacity"].get<float>(HydrogenCapacity);
 	HydrogenRenegenation = saved[S_STATISTICS]["H2"]["recovery"].get<float>(HydrogenRenegenation);
+	HydrogenThruster = saved[S_STATISTICS]["H2"]["thrust"].get<float>(HydrogenThruster);
+	viewRotationSpeed = saved[S_SETTINGS]["viewSpeed"].get<float>(viewRotationSpeed);
 	if (saved[S_CHECKPOINTS].size()) {
 		UE_LOG(LogTemp, Display, TEXT("Load Saved Checkpoint"));
 		loadCheckpointInternal();
@@ -292,6 +327,7 @@ void AHydroCarPawn::endGame()
 	if (saved[S_CHECKPOINTS].get<std::chrono::steady_clock::duration>(duration) > duration)
 		saved[S_CHECKPOINTS] = duration;
 	saved[S_CHECKPOINTS].truncate();
+	timer = "Timer: 00:00.000";
 	started = false;
 	AHydroCarGameModeBase::instance->respawn(this);
 	auto tmp = static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->GetSnapshot();
@@ -316,8 +352,23 @@ void AHydroCarPawn::onRestart()
 	tmp.AngularVelocity = tmp.LinearVelocity = FVector::Zero();
 	tmp.EngineRPM = 0;
 	static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->SetSnapshot(tmp);
+	timer = "Timer: 00:00.000";
 	started = false;
 	onBegin();
+}
+
+void AHydroCarPawn::pauseToMainMenu()
+{
+	if (saved[S_CHECKPOINTS].size() > 0)
+		saveCheckpointInternal();
+	pauseMenu->Close();
+	auto tmp = static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->GetSnapshot();
+	tmp.AngularVelocity = tmp.LinearVelocity = FVector::Zero();
+	tmp.EngineRPM = 0;
+	static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->SetSnapshot(tmp);
+	timer = "Timer: 00:00.000";
+	started = false;
+	OnEndGame();
 }
 
 void AHydroCarPawn::dropCheckpoint()
@@ -339,8 +390,10 @@ void AHydroCarPawn::saveCheckpointInternal()
 	sd["hydrogen"] = Hydrogen;
 	sd["pos"] = GetActorLocation();
 	sd["rot"] = GetActorRotation();
-	GetVehicleMovementComponent()->GetBaseSnapshot(sd["mov"]);
-	sd["rpm"] = static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->GetEngineRotationSpeed();
+	auto tmp = static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->GetSnapshot();
+	sd["mov"] = static_cast<FBaseSnapshotData&>(tmp);
+	sd["rpm"] = tmp.EngineRPM;
+	sd["gear"] = tmp.SelectedGear;
 	OnSaveCheckpoint({&sd});
 	saved[S_CHECKPOINTS].push(sd);
 }
@@ -365,9 +418,10 @@ void AHydroCarPawn::loadCheckpointInternal()
 	currentLap = sd["currentLap"];
 	Hydrogen = sd["hydrogen"];
 	TeleportTo(sd["pos"], sd["rot"], false, false);
-	GetVehicleMovementComponent()->SetBaseSnapshot(sd["mov"]);
 	auto tmp = static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->GetSnapshot();
+	static_cast<FBaseSnapshotData&>(tmp) = sd["mov"];
 	tmp.EngineRPM = sd["rpm"];
+	tmp.SelectedGear = sd["gear"];
 	static_cast<UChaosWheeledVehicleMovementComponent*>(GetVehicleMovementComponent())->SetSnapshot(tmp);
 	OnLoadCheckpoint({&sd});
 }
@@ -450,11 +504,10 @@ void AHydroCarPawn::updateControl(int8 newControl)
 	if (WC_PAUSING & lost) {
 		if (auto pc = GetLocalViewingPlayerController()) {
 			pc->SetPause(false);
-			loadCheckpointInternal();
+			startTime = std::chrono::steady_clock::now() - pauseRememberance;
 		}
-		saved[S_CHECKPOINTS].getList().pop_back();
 	} else if (WC_PAUSING & gained) {
-		saveCheckpointInternal();
+		pauseRememberance = std::chrono::steady_clock::now() - startTime;
 		GetLocalViewingPlayerController()->SetPause(true);
 	}
 	controlDependency = newControl;

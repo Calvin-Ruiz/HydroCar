@@ -18,6 +18,8 @@ enum Section {
 	S_CHECKPOINTS,
 	S_ACHIEVEMENTS, // List of int describing the progression
 	S_STATISTICS,
+	S_SETTINGS,
+	S_MARKET,
 	// Only add new sections at the end of this enum, right above this comment, to maintain save compatibility
 };
 
@@ -93,10 +95,16 @@ public:
 	void OnBoost();
 
 	UFUNCTION(BlueprintCallable)
+	void loadConfig(const FString &playerName);
+
+	UFUNCTION(BlueprintCallable)
 	void onBegin();
 
 	UFUNCTION(BlueprintCallable)
 	void onRestart();
+
+	UFUNCTION(BlueprintCallable)
+	void pauseToMainMenu();
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnBeginGame();
@@ -214,6 +222,9 @@ public:
 	float HydrogenCapacity = 10.f;
 	UPROPERTY(Category = Hydrogen, EditDefaultsOnly, BlueprintReadOnly)
 	float HydrogenRenegenation = 0.f;
+	// Propulsion force and consumption of the hydrogen thruster
+	UPROPERTY(Category = Hydrogen, EditDefaultsOnly, BlueprintReadOnly)
+	float HydrogenThruster = 1.f;
 	UPROPERTY(Category = Hydrogen, BlueprintReadOnly)
 	bool UsingHydrogen = false;
 
@@ -232,8 +243,11 @@ public:
 
 	void applyControl();
 	void updateControl(int8 newControl);
-protected:
+	BigSave saved;
+	UPROPERTY(AdvancedDisplay, NoClear, BlueprintReadOnly)
+	FSaveData Saved = {&saved};
 
+protected:
 	// Spring arm for the camera
 	UPROPERTY(Category = Camera, EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* SpringArm;
@@ -242,27 +256,22 @@ protected:
 	UPROPERTY(Category = Camera, EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* Camera;
 
-	// Save every information about the player
-	// UFUNCTION()
-	// SaveData SaveCurrentState();
+	UPROPERTY(Category = Camera, EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	float viewRotationSpeed = 1;
 
-	// Load every information about the player
-	// UFUNCTION()
-	// void LoadCurrentState(SaveData sd);
-
-	UPROPERTY()
-	FString playerName;
 private:
 	void setDirection(int32 direction);
 	int32 cachedDirection = 0;
-	std::shared_ptr<BigSave> save = BigSave::loadShared("PlayerSave");
-	SaveData &saved = *save;
 	UBaseWidget *newInputTarget = nullptr;
 	float lastRPM;
 	std::chrono::steady_clock::time_point startTime;
+	std::chrono::steady_clock::duration pauseRememberance;
 	bool started = false;
-
-protected:
-	UPROPERTY(AdvancedDisplay, NoClear, EditInstanceOnly, BlueprintReadOnly)
-	FSaveData Saved = {&saved};
+public:
+	UPROPERTY(BlueprintReadOnly)
+	bool leftThrust = false;
+	UPROPERTY(BlueprintReadOnly)
+	bool rightThrust = false;
+	UPROPERTY(BlueprintReadOnly)
+	bool backThrust = false;
 };

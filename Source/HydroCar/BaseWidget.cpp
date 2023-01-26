@@ -19,6 +19,7 @@ void UBaseWidget::Open(UBaseWidget *widget)
     widget->parent = this;
     widget->player = player;
     const int sz = childs.Num();
+    UE_LOG(LogTemp, Warning, TEXT("Open Widget %s in %s, totalizing %i"), *widget->GetName(), *GetName(), sz);
     for (int i = 0; i < sz; ++i) {
         if (widget->priorityLevel < childs[i]->priorityLevel) {
             expandControl(this, childs.Insert(widget, i) + 1);
@@ -42,11 +43,18 @@ void UBaseWidget::detach()
 
 void UBaseWidget::Close()
 {
-    // UE_LOG(LogTemp, Warning, TEXT("Closing window %p parent %p"), this, parent);
+    if (!this) {
+        UE_LOG(LogTemp, Error, TEXT("Attempt to close a null widget"));
+        return;
+    }
     detach();
     if (parent) {
         int idx = parent->childs.Find(this);
+        UE_LOG(LogTemp, Warning, TEXT("REMOVING %s at index %i"), *GetName(), idx);
         parent->childs.RemoveAt(idx);
+        for (auto p : parent->childs) {
+            UE_LOG(LogTemp, Display, TEXT("Remaining %s"), *p->GetName());
+        }
         expandControl(parent, idx);
     } else {
         // UE_LOG(LogTemp, Warning, TEXT("Closing main window"));

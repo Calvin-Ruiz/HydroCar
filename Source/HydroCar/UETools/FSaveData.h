@@ -5,8 +5,9 @@
 
 class SaveData;
 
-USTRUCT(BlueprintType, NoExport, meta = (DontUseGenericSpawnObject))
+USTRUCT(BlueprintType, Atomic, meta = (DontUseGenericSpawnObject))
 struct FSaveData {
+    GENERATED_BODY();
 public:
     SaveData *handle = nullptr;
 };

@@ -63,6 +63,11 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void OnInform(UBaseWidget *target, FSaveData args);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	FSaveData Saved(Section section) {
+		return {&player->saved[section]};
+	}
+
 	virtual FReply NativeOnKeyUp(const FGeometry &InGeometry, const FKeyEvent &InKeyEvent) override;
 protected:
 	// Owning player
@@ -76,11 +81,13 @@ protected:
 	// Determine how this widget interact with the player and other widgets
 	UPROPERTY(Category = Menu, EditDefaultsOnly, meta = (Bitmask, BitmaskEnum = WidgetControl))
 	int8 control = 0;
+
+	UPROPERTY(BlueprintReadOnly)
+	UBaseWidget *parent = nullptr;
 private:
 	static void expandControl(UBaseWidget *self, int index);
 	// Set the control dependency, return true if the controlDependency of this widget kept unchanged
 	bool setControlDependency(int index, int8 _nextControlDependency);
-	UBaseWidget *parent = nullptr;
 	UPROPERTY()
 	TArray<UBaseWidget *> childs;
 
@@ -93,7 +100,7 @@ private:
 	inline bool updateControlDependency(int8 newDependency) {
 		if (newDependency == controlDependency)
 			return true;
-		// UE_LOG(LogTemp, Warning, TEXT("Update Dependency %i -> %i"), controlDependency, newDependency);
+		UE_LOG(LogTemp, Display, TEXT("Update Dependency of %s : %i -> %i"), *GetName(), controlDependency, newDependency);
 		int8 gained = ~controlDependency & newDependency;
 		int8 lost = controlDependency & ~newDependency;
 		if (WC_OVERRIDE_DISPLAY & gained) {

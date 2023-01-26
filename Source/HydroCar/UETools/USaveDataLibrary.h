@@ -1,21 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "FSaveData.h"
-#include "../Tools/BigSave.hpp"
+#include "FBigSave.h"
 #include <chrono>
-#include <memory>
 #include "USaveDataLibrary.generated.h"
 
-USTRUCT(BlueprintType, NoExport, meta = (DontUseGenericSpawnObject))
-struct FBigSave {
-	std::shared_ptr<BigSave> base;
-	UPROPERTY(BlueprintReadOnly)
-    FSaveData root = FSaveData{base.get()};
-};
-
-USTRUCT(BlueprintType, NoExport, meta = (DontUseGenericSpawnObject))
+USTRUCT(BlueprintType, Atomic, meta = (DontUseGenericSpawnObject))
 struct FSaveDataRoot {
+	GENERATED_BODY();
 private:
     SaveData base;
 public:
