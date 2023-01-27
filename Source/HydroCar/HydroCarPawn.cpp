@@ -120,6 +120,7 @@ void AHydroCarPawn::Tick(float deltaTime)
 		if (Hydrogen <= 0) {
 			Hydrogen = 0;
 			UsingHydrogen = false;
+			updateAchievement(AchievementName::EMPTY);
 		}
 	} else if (Hydrogen < HydrogenCapacity) {
 		Hydrogen += HydrogenRenegenation * HydrogenThruster * deltaTime;

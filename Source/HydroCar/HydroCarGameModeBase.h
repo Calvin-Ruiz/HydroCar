@@ -44,21 +44,12 @@ enum AchievementName {
     BACKWARD,
     RETRY_FOREVER,
     ACHIEVEMENT_COLLECTOR,
+	EMPTY,
+	RESTART,
+	NOT_THAT_USELESS,
     // Insert new achievements right before this comment
     COUNT,
 };
-
-#define ALL_ACHIEVEMENTS { \
-    FAchievementDescription{"Race Completed", "Complete a race", 1, 0, 100, 100}, \
-    FAchievementDescription{"Race Uncompleted", "Complete a race... In reverse order", 1, 1, 500, 150}, \
-    FAchievementDescription{"Retry", "Go back to a checkpoint", 1, 1, 100, 0}, \
-    FAchievementDescription{"Rectify", "Drop a checkpoint", 1, 1, 100, 0}, \
-    FAchievementDescription{"Perfectionnist", "Drop several checkpoints", 10, 1, 300, 10}, \
-    FAchievementDescription{"Uncertain", "Reach previous checkpoint multiple times", 5, 2, 300, 30}, \
-    FAchievementDescription{"Backward", "Go backward", 1, 1, 100, 0}, \
-    FAchievementDescription{"Retry Forever", "Retry again, again, again...", 100, 10, 1000, 10}, \
-    FAchievementDescription{"Achievement Collector", "Complete all the achievements once, excepted this one", int(AchievementName::COUNT) - 1, 5, 3000, 0} \
-}
 
 /**
  *
@@ -76,7 +67,20 @@ public:
 	void respawn(AHydroCarPawn *self);
 
 	UPROPERTY(EditDefaultsOnly, EditFixedSize)
-	TArray<FAchievementDescription> achievements = ALL_ACHIEVEMENTS;
+	TArray<FAchievementDescription> achievements = {
+	    FAchievementDescription{"Race Completed", "Complete a race", 1, 0, 100, 100},
+	    FAchievementDescription{"Race Uncompleted", "Complete a race... In reverse order", 1, 1, 500, 150},
+	    FAchievementDescription{"Retry", "Go back to a checkpoint", 1, 1, 100, 0},
+	    FAchievementDescription{"Rectify", "Drop a checkpoint", 1, 1, 100, 0},
+	    FAchievementDescription{"Perfectionnist", "Drop several checkpoints", 10, 1, 300, 10},
+	    FAchievementDescription{"Uncertain", "Reach previous checkpoint multiple times", 5, 2, 300, 30},
+	    FAchievementDescription{"Backward", "Go backward", 1, 1, 100, 0},
+	    FAchievementDescription{"Retry Forever", "Retry again, again, again...", 100, 10, 1000, 10},
+	    FAchievementDescription{"Achievement Collector", "Complete every achievements once, excepted this one", int(AchievementName::COUNT) - 1, 5, 3000, 0},
+		FAchievementDescription{"Empty", "Consume all your hydrogen", 1, 1, 100, 0},
+		FAchievementDescription{"Restart", "Restart a race", 1, 1, 100, 0},
+		FAchievementDescription{"Not that Useless", "Use Useless Coins for an upgrade", 1, 1, 100, 0},
+	};
 
 private:
 	std::shared_ptr<BigSave> save;
