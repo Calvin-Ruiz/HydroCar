@@ -71,17 +71,6 @@ public:
 	void OnHandbrakePressed();
 	void OnHandbrakeReleased();
 
-	// Respawn
-	// void setRespawnLocation(FVector LocToSave);
-	// FVector getRespawnLocation();
-
-	// Lap
-	// void increaseLap();
-	// UFUNCTION(Category = Race, BlueprintCallable, BlueprintPure)
-	// int getCurrentLap();
-	// UPROPERTY(Category = Race, EditAnywhere, BlueprintReadOnly)
-	// int maxCurrentLap = 3;
-
 	UFUNCTION(BlueprintCallable)
 	void dropCheckpoint();
 	UFUNCTION(BlueprintCallable)
@@ -92,7 +81,31 @@ public:
 	void loadCheckpointInternal();
 	void endGame();
 	void OnBack();
-	void OnBoost();
+
+	void OnLeftThrustTrue() {
+		leftThrust = true;
+		UsingHydrogen = true;
+	}
+	void OnRightThrustTrue() {
+		rightThrust = true;
+		UsingHydrogen = true;
+	}
+	void OnBoostTrue() {
+		backThrust = true;
+		UsingHydrogen = true;
+	}
+	void OnLeftThrustFalse() {
+		leftThrust = false;
+		UsingHydrogen &= rightThrust | backThrust;
+	}
+	void OnRightThrustFalse() {
+		rightThrust = false;
+		UsingHydrogen &= leftThrust | backThrust;
+	}
+	void OnBoostFalse() {
+		backThrust = false;
+		UsingHydrogen &= leftThrust | rightThrust;
+	}
 
 	UFUNCTION(BlueprintCallable)
 	void loadConfig(const FString &playerName);
@@ -224,7 +237,7 @@ public:
 	float HydrogenRenegenation = 0.f;
 	// Propulsion force and consumption of the hydrogen thruster
 	UPROPERTY(Category = Hydrogen, EditDefaultsOnly, BlueprintReadOnly)
-	float HydrogenThruster = 1.f;
+	float HydrogenThruster = 2.f;
 	UPROPERTY(Category = Hydrogen, BlueprintReadOnly)
 	bool UsingHydrogen = false;
 

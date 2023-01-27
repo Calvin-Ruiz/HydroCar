@@ -66,6 +66,12 @@ void AHydroCarPawn::loadConfig(const FString &playerName)
 		saved.store();
 	saved.reset();
 	saved.open(TCHAR_TO_UTF8(*playerName));
+	UChaosWheeledVehicleMovementComponent* Vehicle4W = CastChecked<UChaosWheeledVehicleMovementComponent>(GetVehicleMovement());
+	Vehicle4W->EngineSetup.MaxRPM = saved[S_STATISTICS]["MaxRPM"].get<float>(MaxEngineRPM);
+	Hydrogen = HydrogenCapacity = saved[S_STATISTICS]["H2"]["capacity"].get<float>(HydrogenCapacity);
+	HydrogenRenegenation = saved[S_STATISTICS]["H2"]["recovery"].get<float>(HydrogenRenegenation);
+	HydrogenThruster = saved[S_STATISTICS]["H2"]["thrust"].get<float>(HydrogenThruster);
+	viewRotationSpeed = saved[S_SETTINGS]["viewSpeed"].get<float>(viewRotationSpeed);
 }
 
 void AHydroCarPawn::Tick(float deltaTime)
@@ -92,23 +98,22 @@ void AHydroCarPawn::Tick(float deltaTime)
 	if (UsingHydrogen) {
 		FBaseSnapshotData data;
 		GetVehicleMovementComponent()->GetBaseSnapshot(data);
-		data.AngularVelocity.X = 0;
-		data.AngularVelocity.Z = 0;
-		const float acceleration = deltaTime * HydrogenThruster;
+		data.AngularVelocity *= std::pow(0.5/HydrogenThruster, deltaTime);
+		const float acceleration = deltaTime * HydrogenThruster * 50;
+		auto forward = GetMesh()->GetForwardVector();
 		if (leftThrust) {
 			if (rightThrust) {
-				data.AngularVelocity.Y = 0;
-				data.LinearVelocity += GetMesh()->GetUpVector() * acceleration * 2;
+				data.LinearVelocity += GetMesh()->GetUpVector() * (acceleration * 2);
 			} else {
-				data.AngularVelocity.Y = 0.1 * HydrogenThruster;
+				data.AngularVelocity += forward * (-0.03 * acceleration);
 				data.LinearVelocity += GetMesh()->GetUpVector() * acceleration;
 			}
 		} else if (rightThrust) {
-			data.AngularVelocity.Y = -0.1 * HydrogenThruster;
+			data.AngularVelocity += forward * (0.03 * acceleration);
 			data.LinearVelocity += GetMesh()->GetUpVector() * acceleration;
 		}
 		if (backThrust) {
-			data.LinearVelocity += GetMesh()->GetForwardVector() * acceleration;
+			data.LinearVelocity += forward * acceleration;
 		}
 		GetVehicleMovementComponent()->SetBaseSnapshot(data);
 		Hydrogen -= deltaTime;
@@ -146,8 +151,12 @@ void AHydroCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("DropCheckpoint", IE_Pressed, this, &AHydroCarPawn::dropCheckpoint);
 	PlayerInputComponent->BindAction("DropCheckpoint", IE_Released, this, &AHydroCarPawn::loadCheckpoint);
 	PlayerInputComponent->BindAction("Back", IE_Released, this, &AHydroCarPawn::OnBack);
-	PlayerInputComponent->BindAction("Boost", IE_Pressed, this, &AHydroCarPawn::OnBoost);
-
+	PlayerInputComponent->BindAction("Boost", IE_Pressed, this, &AHydroCarPawn::OnBoostTrue);
+	PlayerInputComponent->BindAction("Boost", IE_Released, this, &AHydroCarPawn::OnBoostFalse);
+	PlayerInputComponent->BindAction(isQwerty ? "LeftThrust2" : "LeftThrust", IE_Pressed, this, &AHydroCarPawn::OnLeftThrustTrue);
+	PlayerInputComponent->BindAction(isQwerty ? "LeftThrust2" : "LeftThrust", IE_Released, this, &AHydroCarPawn::OnLeftThrustFalse);
+	PlayerInputComponent->BindAction("RightThrust", IE_Pressed, this, &AHydroCarPawn::OnRightThrustTrue);
+	PlayerInputComponent->BindAction("RightThrust", IE_Released, this, &AHydroCarPawn::OnRightThrustFalse);
 }
 
 void AHydroCarPawn::BecomeViewTarget(APlayerController *PC)
@@ -240,11 +249,6 @@ void AHydroCarPawn::OnBack()
 {
 	if (pauseMenu)
 		display->Open(pauseMenu);
-}
-
-void AHydroCarPawn::OnBoost()
-{
-
 }
 
 bool AHydroCarPawn::reachCheckpoint(int checkPointNumber)
