@@ -69,9 +69,9 @@ void AHydroCarPawn::loadConfig(const FString &playerName)
 	saved.open(TCHAR_TO_UTF8(*playerName));
 	UChaosWheeledVehicleMovementComponent* Vehicle4W = CastChecked<UChaosWheeledVehicleMovementComponent>(GetVehicleMovement());
 	Vehicle4W->EngineSetup.MaxRPM = saved[S_STATISTICS]["MaxRPM"].get<float>(MaxEngineRPM);
-	Hydrogen = HydrogenCapacity = saved[S_STATISTICS]["H2"]["capacity"].get<float>(HydrogenCapacity);
-	HydrogenRenegenation = saved[S_STATISTICS]["H2"]["recovery"].get<float>(HydrogenRenegenation);
-	HydrogenThruster = saved[S_STATISTICS]["H2"]["thrust"].get<float>(HydrogenThruster);
+	Hydrogen = HydrogenCapacity = saved[S_STATISTICS]["H2"]["capacity"].get<float>(10);
+	HydrogenRenegenation = saved[S_STATISTICS]["H2"]["recovery"].get<float>(0);
+	HydrogenThruster = saved[S_STATISTICS]["H2"]["thrust"].get<float>(2);
 	viewRotationSpeed = saved[S_SETTINGS]["viewSpeed"].get<float>(viewRotationSpeed);
 	ConfirmationSkip.handle = &saved[S_SETTINGS]["confirm"];
 }
@@ -448,10 +448,8 @@ void AHydroCarPawn::loadCheckpoint()
 
 void AHydroCarPawn::updateAchievement(AchievementName name)
 {
-	if (saved[S_ACHIEVEMENTS].empty()) {
-		for (int i = 0; i < AchievementName::COUNT; ++i)
-			saved[S_ACHIEVEMENTS].push();
-	}
+	while (saved[S_ACHIEVEMENTS].size() < AchievementName::COUNT)
+		saved[S_ACHIEVEMENTS].push();
 	auto &desc = AHydroCarGameModeBase::instance->achievements[name];
 	int &progress = saved[S_ACHIEVEMENTS][name];
 	// UE_LOG(LogTemp, Warning, TEXT("Update Achievement %s"), *desc.name);
