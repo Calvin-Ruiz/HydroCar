@@ -43,18 +43,10 @@ void UBaseWidget::detach()
 
 void UBaseWidget::Close()
 {
-    if (!this) {
-        UE_LOG(LogTemp, Error, TEXT("Attempt to close a null widget"));
-        return;
-    }
     detach();
     if (parent) {
         int idx = parent->childs.Find(this);
-        UE_LOG(LogTemp, Warning, TEXT("REMOVING %s at index %i"), *GetName(), idx);
         parent->childs.RemoveAt(idx);
-        for (auto p : parent->childs) {
-            UE_LOG(LogTemp, Display, TEXT("Remaining %s"), *p->GetName());
-        }
         expandControl(parent, idx);
     } else {
         // UE_LOG(LogTemp, Warning, TEXT("Closing main window"));

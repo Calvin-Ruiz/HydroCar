@@ -12,6 +12,7 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Tools/BigSave.hpp"
 #include "BaseWidget.h"
+#include "ConfirmationWidget.h"
 
 AHydroCarPawn::AHydroCarPawn()
 {
@@ -72,6 +73,7 @@ void AHydroCarPawn::loadConfig(const FString &playerName)
 	HydrogenRenegenation = saved[S_STATISTICS]["H2"]["recovery"].get<float>(HydrogenRenegenation);
 	HydrogenThruster = saved[S_STATISTICS]["H2"]["thrust"].get<float>(HydrogenThruster);
 	viewRotationSpeed = saved[S_SETTINGS]["viewSpeed"].get<float>(viewRotationSpeed);
+	ConfirmationSkip.handle = &saved[S_SETTINGS]["confirm"];
 }
 
 void AHydroCarPawn::Tick(float deltaTime)
@@ -172,6 +174,8 @@ void AHydroCarPawn::BecomeViewTarget(APlayerController *PC)
 		mainMenu = static_cast<UBaseWidget *>(UUserWidget::CreateWidgetInstance(*PC, mainMenuClass, FName(("MainMenu"+tmp).data())));
 		display->Open(mainMenu);
 	}
+	if (confirmationClass)
+		confirmation = static_cast<UConfirmationWidget *>(UUserWidget::CreateWidgetInstance(*PC, confirmationClass, FName(("Confirmation"+tmp).data())));
 }
 
 void AHydroCarPawn::EndViewTarget(APlayerController *PC)
@@ -180,6 +184,7 @@ void AHydroCarPawn::EndViewTarget(APlayerController *PC)
 	display->Close();
 	pauseMenu = nullptr;
 	mainMenu = nullptr;
+	confirmation = nullptr;
 	Super::EndViewTarget(PC);
 }
 
