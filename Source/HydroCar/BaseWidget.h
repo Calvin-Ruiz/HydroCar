@@ -31,6 +31,7 @@ UCLASS()
 class HYDROCAR_API UBaseWidget : public UUserWidget
 {
 	GENERATED_BODY()
+	friend class UConfirmationWidget; // For access to protected member
 public:
 	bool operator<(const UBaseWidget &other) {
 		return priorityLevel < other.priorityLevel;

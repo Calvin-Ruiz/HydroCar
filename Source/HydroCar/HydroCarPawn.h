@@ -11,6 +11,7 @@
 #include "HydroCarPawn.generated.h"
 
 class UBaseWidget;
+class UConfirmationWidget;
 
 // Enumerate all sections at the root of a player save
 UENUM(BlueprintType)
@@ -169,12 +170,16 @@ public:
 	TSubclassOf<UBaseWidget> mainMenuClass;
 	UPROPERTY(Category = Menu, EditDefaultsOnly, meta = (DisplayName = "Pause Menu"))
 	TSubclassOf<UBaseWidget> pauseMenuClass;
+	UPROPERTY(Category = Menu, EditDefaultsOnly, meta = (DisplayName = "Confirmation"))
+	TSubclassOf<UConfirmationWidget> confirmationClass;
 	UPROPERTY(Category = Menu, BlueprintReadOnly)
 	UBaseWidget *display = nullptr;
 	UPROPERTY(Category = Menu, BlueprintReadOnly)
 	UBaseWidget *mainMenu = nullptr;
 	UPROPERTY()
 	UBaseWidget *pauseMenu = nullptr;
+	UPROPERTY()
+	UConfirmationWidget *confirmation = nullptr;
 
 	// Tire variables
 	UPROPERTY(Category = Tire, EditDefaultsOnly, BlueprintReadOnly)
@@ -259,6 +264,8 @@ public:
 	BigSave saved;
 	UPROPERTY(AdvancedDisplay, NoClear, BlueprintReadOnly)
 	FSaveData Saved = {&saved};
+	UPROPERTY(AdvancedDisplay, NoClear, BlueprintReadOnly)
+	FSaveData ConfirmationSkip;
 
 protected:
 	// Spring arm for the camera
