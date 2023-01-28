@@ -118,14 +118,14 @@ void AHydroCarPawn::Tick(float deltaTime)
 			data.LinearVelocity += forward * acceleration;
 		}
 		GetVehicleMovementComponent()->SetBaseSnapshot(data);
-		Hydrogen -= deltaTime;
+		Hydrogen += (HydrogenRenegenation - HydrogenThruster) * deltaTime;
 		if (Hydrogen <= 0) {
 			Hydrogen = 0;
 			UsingHydrogen = false;
 			updateAchievement(AchievementName::EMPTY);
 		}
 	} else if (Hydrogen < HydrogenCapacity) {
-		Hydrogen += HydrogenRenegenation * HydrogenThruster * deltaTime;
+		Hydrogen += HydrogenRenegenation * deltaTime;
 		if (Hydrogen > HydrogenCapacity)
 			Hydrogen = HydrogenCapacity;
 	}
