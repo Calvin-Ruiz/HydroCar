@@ -84,28 +84,40 @@ public:
 	void OnBack();
 
 	void OnLeftThrustTrue() {
+		OnLeftThrust(true);
 		leftThrust = true;
 		UsingHydrogen = true;
 	}
 	void OnRightThrustTrue() {
+		OnRightThrust(true);
 		rightThrust = true;
 		UsingHydrogen = true;
 	}
 	void OnBoostTrue() {
+		OnBackThrust(true);
 		backThrust = true;
 		UsingHydrogen = true;
 	}
 	void OnLeftThrustFalse() {
-		leftThrust = false;
-		UsingHydrogen &= rightThrust | backThrust;
+		if (leftThrust) {
+			OnLeftThrust(false);
+			leftThrust = false;
+			UsingHydrogen &= rightThrust | backThrust;
+		}
 	}
 	void OnRightThrustFalse() {
-		rightThrust = false;
-		UsingHydrogen &= leftThrust | backThrust;
+		if (rightThrust) {
+			OnRightThrust(false);
+			rightThrust = false;
+			UsingHydrogen &= leftThrust | backThrust;
+		}
 	}
 	void OnBoostFalse() {
-		backThrust = false;
-		UsingHydrogen &= leftThrust | rightThrust;
+		if (backThrust) {
+			OnBackThrust(false);
+			backThrust = false;
+			UsingHydrogen &= leftThrust | rightThrust;
+		}
 	}
 
 	UFUNCTION(BlueprintCallable)
@@ -138,6 +150,17 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnLoadCheckpoint(FSaveData datas);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnLeftThrust(bool state);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnRightThrust(bool state);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnBackThrust(bool state);
+
+	void stopThrusters();
 
 	// Increase the counter of the given achievement
 	UFUNCTION(BlueprintCallable)
@@ -288,10 +311,7 @@ private:
 	std::chrono::steady_clock::duration pauseRememberance;
 	bool started = false;
 public:
-	UPROPERTY(BlueprintReadOnly)
 	bool leftThrust = false;
-	UPROPERTY(BlueprintReadOnly)
 	bool rightThrust = false;
-	UPROPERTY(BlueprintReadOnly)
 	bool backThrust = false;
 };

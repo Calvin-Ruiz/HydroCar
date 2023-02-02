@@ -79,7 +79,7 @@ public:
 	    FAchievementDescription{"Achievement Collector", "Complete every achievements once, excepted this one", int(AchievementName::COUNT) - 1, 5, 3000, 0},
 		FAchievementDescription{"Empty", "Consume all your hydrogen", 1, 1, 100, 0},
 		FAchievementDescription{"Restart", "Restart a race", 1, 1, 100, 0},
-		FAchievementDescription{"Not that Useless", "Use Useless Coins for an upgrade", 1, 1, 100, 0},
+		FAchievementDescription{"Not that Useless", "Use Useless Coins for an upgrade", 1, 1, 100, 10},
 	};
 
 private:

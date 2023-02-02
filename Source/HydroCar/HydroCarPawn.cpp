@@ -60,6 +60,23 @@ AHydroCarPawn::AHydroCarPawn()
 	Camera->FieldOfView = 90.0f;
 }
 
+void AHydroCarPawn::stopThrusters()
+{
+	UsingHydrogen = false;
+	if (leftThrust) {
+		OnLeftThrust(false);
+		leftThrust = false;
+	}
+	if (rightThrust) {
+		OnRightThrust(false);
+		rightThrust = false;
+	}
+	if (backThrust) {
+		OnBackThrust(false);
+		backThrust = false;
+	}
+}
+
 void AHydroCarPawn::loadConfig(const FString &playerName)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Loading config for player %s, note that %p"), *playerName, Saved.handle);
@@ -115,13 +132,13 @@ void AHydroCarPawn::Tick(float deltaTime)
 			data.LinearVelocity += GetMesh()->GetUpVector() * acceleration;
 		}
 		if (backThrust) {
-			data.LinearVelocity += forward * acceleration;
+			data.LinearVelocity += forward * (acceleration * 2);
 		}
 		GetVehicleMovementComponent()->SetBaseSnapshot(data);
 		Hydrogen += (HydrogenRenegenation - HydrogenThruster) * deltaTime;
 		if (Hydrogen <= 0) {
 			Hydrogen = 0;
-			UsingHydrogen = false;
+			stopThrusters();
 			updateAchievement(AchievementName::EMPTY);
 		}
 	} else if (Hydrogen < HydrogenCapacity) {
@@ -322,6 +339,7 @@ void AHydroCarPawn::onBegin()
 	HydrogenRenegenation = saved[S_STATISTICS]["H2"]["recovery"].get<float>(HydrogenRenegenation);
 	HydrogenThruster = saved[S_STATISTICS]["H2"]["thrust"].get<float>(HydrogenThruster);
 	viewRotationSpeed = saved[S_SETTINGS]["viewSpeed"].get<float>(viewRotationSpeed);
+	stopThrusters();
 	if (saved[S_CHECKPOINTS].size()) {
 		UE_LOG(LogTemp, Display, TEXT("Load Saved Checkpoint"));
 		loadCheckpointInternal();
