@@ -3,6 +3,12 @@
 
 #include "BaseWidget.h"
 
+#if WITH_EDITOR
+#define PAUSE_KEY EKeys::P
+#else
+#define PAUSE_KEY EKeys::Escape
+#endif
+
 void UBaseWidget::Bind(AHydroCarPawn *_player)
 {
     player = _player;
@@ -94,7 +100,7 @@ bool UBaseWidget::setControlDependency(int index, int8 _nextControlDependency)
 
 FReply UBaseWidget::NativeOnKeyUp(const FGeometry &InGeometry, const FKeyEvent &InKeyEvent)
 {
-    if (InKeyEvent.GetKey() == EKeys::Escape || InKeyEvent.GetKey() == EKeys::P) {
+    if (InKeyEvent.GetKey() == PAUSE_KEY || InKeyEvent.GetKey() == EKeys::Gamepad_Special_Left) {
         OnBack();
         Super::NativeOnKeyUp(InGeometry, InKeyEvent);
         return FReply::Handled();
